@@ -1,0 +1,63 @@
+.profile-modal {
+  max-width: 500px;
+}
+
+.form-group-row {
+  display: flex;
+  gap: 16px;
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.avatar-option {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background-color: var(--bg-secondary);
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-option img {
+  width: 80%;
+  height: 80%;
+}
+
+.avatar-option:hover {
+  border-color: var(--border-light);
+  transform: scale(1.05);
+}
+
+.avatar-option.selected {
+  border-color: var(--accent-blue);
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.avatar-check {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background-color: var(--accent-blue);
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-primary);
+}

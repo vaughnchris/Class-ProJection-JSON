@@ -1,0 +1,133 @@
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+}
+
+/* Navbar Styling */
+.navbar {
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.navbar-left, .navbar-center, .navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar-center {
+  flex: 1;
+  justify-content: center;
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+
+.icon-btn:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.btn-primary { background-color: #10b981; color: white; }
+.btn-primary:hover { background-color: #059669; }
+
+.btn-secondary { background-color: #3b82f6; color: white; }
+.btn-secondary:hover { background-color: #2563eb; }
+
+.btn-accent { background-color: #8b5cf6; color: white; }
+.btn-accent:hover { background-color: #7c3aed; }
+
+.btn-outline {
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+}
+.btn-outline:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+/* Main Workspace */
+.main-workspace {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Editor Area */
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #1e1e1e; /* Standard Monaco background */
+}
+
+.editor-tabs {
+  display: flex;
+  height: 40px;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--bg-primary);
+}
+
+.tab {
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-right: 1px solid var(--border-light);
+}
+
+.tab.active {
+  background-color: #1e1e1e;
+  color: var(--text-primary);
+  border-top: 2px solid var(--accent-blue);
+}
+
+.editor-wrapper {
+  flex: 1;
+  position: relative;
+}
+
+/* Allotment Split Pane overrides */
+.sash {
+  --sash-size: 4px;
+}
+.sash:hover {
+  --focus-border: var(--accent-blue);
+}
