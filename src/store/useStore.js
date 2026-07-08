@@ -24,13 +24,13 @@ const useStore = create((set) => ({
   instructorScroll: 0,
   
   // Student Local State
-  activeTab: 'welcome.py',
+  activeTab: 'about',
   tabs: [
     { 
-      id: 'welcome.py', 
-      name: 'welcome.py', 
-      code: 'print("Welcome to Class Projection!")', 
-      isCloseable: false,
+      id: 'about', 
+      name: 'About', 
+      code: '', 
+      isCloseable: true,
       isOpen: true
     }
   ],
@@ -75,9 +75,8 @@ const useStore = create((set) => ({
   
   setInstructorCode: (code) => set((state) => ({ 
     instructorCode: code,
-    // Also keep the welcome.py tab code in sync for the instructor
     tabs: state.role === 'instructor' 
-      ? state.tabs.map(t => t.id === 'welcome.py' ? { ...t, code } : t)
+      ? state.tabs.map(t => t.id === state.activeTab ? { ...t, code } : t)
       : state.tabs
   })),
   setInstructorCursor: (cursor) => set({ instructorCursor: cursor }),
@@ -106,7 +105,7 @@ const useStore = create((set) => ({
     if (state.activeTab === id) {
       const openTabs = newTabs.filter(t => t.isOpen);
       const idx = state.tabs.findIndex(t => t.id === id);
-      nextActiveTab = openTabs[Math.max(0, openTabs.length - 1)]?.id || 'welcome.py';
+      nextActiveTab = openTabs[Math.max(0, openTabs.length - 1)]?.id || 'about';
     }
     const isInstructor = state.role === 'instructor';
     const activeTabObj = newTabs.find(t => t.id === nextActiveTab);
@@ -132,7 +131,7 @@ const useStore = create((set) => ({
     let nextActiveTab = activeTab;
     if (activeTab === id) {
       const openTabs = newTabs.filter(t => t.isOpen);
-      nextActiveTab = openTabs[Math.max(0, openTabs.length - 1)]?.id || 'welcome.py';
+      nextActiveTab = openTabs[Math.max(0, openTabs.length - 1)]?.id || 'about';
     }
     const isInstructor = state.role === 'instructor';
     const activeTabObj = newTabs.find(t => t.id === nextActiveTab);
@@ -148,14 +147,10 @@ const useStore = create((set) => ({
   updateTabCode: (id, code) => set((state) => {
     const isInstructor = state.role === 'instructor';
     const extraUpdates = {};
-    if (id === 'welcome.py') {
-      if (isInstructor) {
-        extraUpdates.instructorCode = code;
-      } else {
-        extraUpdates.studentLocalCode = code;
-      }
-    } else if (isInstructor && id === state.activeTab) {
+    if (isInstructor && id === state.activeTab) {
       extraUpdates.instructorCode = code;
+    } else if (!isInstructor && id === state.activeTab) {
+      extraUpdates.studentLocalCode = code;
     }
     return {
       tabs: state.tabs.map((t) => (t.id === id ? { ...t, code } : t)),
@@ -164,9 +159,8 @@ const useStore = create((set) => ({
   }),
   setStudentLocalCode: (code) => set((state) => ({ 
     studentLocalCode: code,
-    // Also keep the welcome.py tab code in sync for the student
     tabs: state.role !== 'instructor' 
-      ? state.tabs.map(t => t.id === 'welcome.py' ? { ...t, code } : t)
+      ? state.tabs.map(t => t.id === state.activeTab ? { ...t, code } : t)
       : state.tabs
   })),
   setStudentNeedHelp: (needsHelp) => set({ studentNeedHelp: needsHelp }),

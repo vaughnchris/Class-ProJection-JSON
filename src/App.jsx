@@ -10,7 +10,11 @@ import {
   User,
   ChevronUp,
   ChevronDown,
-  Download
+  Download,
+  FileCode,
+  FileText,
+  Table,
+  File
 } from 'lucide-react';
 import CodeEditor from './components/Editor/CodeEditor';
 import ConsolePanel from './components/Console/ConsolePanel';
@@ -59,6 +63,7 @@ function App() {
     tabs,
     addTab,
     closeTab,
+    openTab,
     renameTab,
     fontSize,
     increaseFontSize,
@@ -67,7 +72,7 @@ function App() {
 
   useEffect(() => {
     if (!isSharing && activeTab === 'instructor_code') {
-      setActiveTab('welcome.py');
+      setActiveTab('about');
     }
   }, [isSharing, activeTab, setActiveTab]);
 
@@ -77,7 +82,7 @@ function App() {
   const getActiveTabCode = () => {
     const isInstructor = role === 'instructor';
     if (isInstructor) {
-      if (activeTab === 'welcome.py') {
+      if (activeTab === 'about') {
         return instructorCode;
       } else {
         const tab = tabs.find((t) => t.id === activeTab);
@@ -86,7 +91,7 @@ function App() {
     } else {
       if (activeTab === 'instructor_code') {
         return instructorCode;
-      } else if (activeTab === 'welcome.py') {
+      } else if (activeTab === 'about') {
         return (activeMode === 'broadcast' && !isSharing) ? instructorCode : studentLocalCode;
       } else {
         const tab = tabs.find((t) => t.id === activeTab);
@@ -102,8 +107,8 @@ function App() {
     const link = document.createElement('a');
     
     let filename = 'code.py';
-    if (activeTab === 'welcome.py') {
-      filename = 'welcome.py';
+    if (activeTab === 'about') {
+      filename = 'about.txt';
     } else if (activeTab === 'instructor_code') {
       filename = 'instructor_code.py';
     } else {
@@ -121,12 +126,34 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const getFileIcon = (filename) => {
+    const ext = filename.split('.').pop().toLowerCase();
+    switch (ext) {
+      case 'py':
+        return <FileCode size={14} className="file-icon-color" style={{ color: '#fbbf24' }} />;
+      case 'txt':
+        return <FileText size={14} className="txt-icon-color" style={{ color: '#94a3b8' }} />;
+      case 'csv':
+        return <Table size={14} className="csv-icon-color" style={{ color: '#10b981' }} />;
+      case 'tsv':
+        return <Table size={14} className="tsv-icon-color" style={{ color: '#14b8a6' }} />;
+      default:
+        return <File size={14} className="default-file-icon-color" style={{ color: '#64748b' }} />;
+    }
+  };
+
   const handleCreateNewTab = () => {
-    const tabCount = tabs.length;
+    const filename = prompt("Enter file name (e.g., data.csv, notes.txt, helper.py):");
+    if (!filename || filename.trim() === '') return;
+    
+    const name = filename.trim();
+    const hasExtension = name.includes('.');
+    const finalName = hasExtension ? name : name + '.py';
+    
     const newTabId = 'custom_' + Date.now();
     addTab({
       id: newTabId,
-      name: `untitled_${tabCount}.py`,
+      name: finalName,
       code: '',
       isCloseable: true
     });
@@ -158,7 +185,7 @@ function App() {
   };
 
   const handleRenameTab = (tabId, currentName) => {
-    if (tabId === 'welcome.py') return;
+    if (tabId === 'about') return;
     const newName = prompt("Rename Tab:", currentName);
     if (newName && newName.trim() !== '') {
       const sanitizedName = newName.trim().endsWith('.py') ? newName.trim() : newName.trim() + '.py';
@@ -211,6 +238,12 @@ function App() {
       }
     };
   }, [appendToConsole, setExecuting, appendToInteractive, setInteractiveExecuting]);
+
+  // Always display the About tab at the beginning of each session
+  useEffect(() => {
+    openTab('about');
+    setActiveTab('about');
+  }, [openTab, setActiveTab]);
 
   // Presence Tracking & Session Restoration
   useEffect(() => {
@@ -338,7 +371,7 @@ function App() {
           >
             <Menu size={18} />
           </button>
-          <div className="logo">CodePro</div>
+          <div className="logo">Class ProJection - Python Editor</div>
         </div>
         
         <div className="navbar-center">
@@ -415,11 +448,11 @@ function App() {
                           className={`tab ${activeTab === tab.id ? 'active' : ''}`}
                           onClick={() => setActiveTab(tab.id)}
                           onDoubleClick={() => handleRenameTab(tab.id, tab.name)}
-                          style={{ cursor: 'pointer', position: 'relative', paddingRight: tab.isCloseable ? '28px' : '16px', userSelect: 'none' }}
+                          style={{ cursor: 'pointer', position: 'relative', paddingRight: tab.isCloseable ? '28px' : '16px', userSelect: 'none', display: 'flex', alignItems: 'center' }}
                           title="Double-click to rename tab"
                         >
-                          <span className="file-icon python-icon"></span>
-                          {tab.name}
+                          {getFileIcon(tab.name)}
+                          <span style={{ marginLeft: '6px' }}>{tab.name}</span>
                           {tab.isCloseable && (
                             <span 
                               onClick={(e) => {
@@ -453,10 +486,10 @@ function App() {
                         <div 
                           className={`tab ${activeTab === 'instructor_code' ? 'active' : ''}`}
                           onClick={() => setActiveTab('instructor_code')}
-                          style={{ cursor: 'pointer' }}
+                          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                         >
-                          <span className="file-icon python-icon"></span>
-                          Instructor's Code (Shared)
+                          <FileCode size={14} className="file-icon-color" style={{ color: '#fbbf24' }} />
+                          <span style={{ marginLeft: '6px' }}>Instructor's Code (Shared)</span>
                         </div>
                       )}
                       
@@ -473,7 +506,7 @@ function App() {
                         onClick={triggerFileInput}
                         className="btn btn-outline"
                         style={{ padding: '0 8px', border: 'none', height: '100%', borderRadius: 0, minWidth: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}
-                        title="Open Local .py File"
+                        title="Open Local File"
                       >
                         <Upload size={14} />
                       </button>
@@ -481,7 +514,7 @@ function App() {
                         type="file"
                         ref={fileInputRef}
                         onChange={handleOpenFile}
-                        accept=".py"
+                        accept=".py,.txt,.csv,.tsv"
                         style={{ display: 'none' }}
                       />
                     </div>

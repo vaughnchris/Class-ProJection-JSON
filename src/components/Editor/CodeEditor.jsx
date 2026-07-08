@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import useStore from '../../store/useStore';
+import AboutPanel from './AboutPanel';
 
 const CodeEditor = ({ activeTab }) => {
   const editorRef = useRef(null);
@@ -27,31 +28,20 @@ const CodeEditor = ({ activeTab }) => {
   
   // Read-only logic:
   // - Instructor is never read-only.
-  // - On the temporary shared tab, student is read-only.
-  // - On welcome.py, student is read-only under broadcast lock ONLY IF sharing is not active.
-  // - Student's custom shared tabs are always editable.
-  const isReadOnly = !isInstructor && (
-    activeTab === 'instructor_code' 
-      ? true 
-      : (activeTab === 'welcome.py' 
-          ? (isSharing ? false : activeMode === 'broadcast')
-          : false)
-  );
+  // - On the shared lecture workspace tab, student is read-only.
+  // - Student's custom files/tabs are always editable.
+  const isReadOnly = !isInstructor && activeTab === 'instructor_code';
   
   // Display code logic:
   // - Instructor sees the current active tab code.
   // - Student sees:
   //   - instructorCode if viewing 'instructor_code'.
-  //   - instructorCode if viewing 'welcome.py' in broadcast lock AND NOT sharing.
-  //   - studentLocalCode if viewing 'welcome.py' in independent/execute mode OR if sharing.
-  //   - tab.code if viewing a custom shared tab.
+  //   - tab.code if viewing any of their workspace files.
   const currentCode = isInstructor 
     ? (tabs.find(t => t.id === activeTab)?.code || '')
     : (activeTab === 'instructor_code' 
         ? instructorCode 
-        : (activeTab === 'welcome.py' 
-            ? ((activeMode === 'broadcast' && !isSharing) ? instructorCode : studentLocalCode)
-            : (tabs.find(t => t.id === activeTab)?.code || '')));
+        : (tabs.find(t => t.id === activeTab)?.code || ''));
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -63,11 +53,29 @@ const CodeEditor = ({ activeTab }) => {
     }
   };
 
+  const activeTabObj = tabs.find(t => t.id === activeTab);
+  const activeTabName = activeTabObj?.name || 'about';
+  const getEditorLanguage = (name) => {
+    const ext = name.split('.').pop().toLowerCase();
+    if (ext === 'py') return 'python';
+    return 'plaintext';
+  };
+
+  const getEditorTheme = (name) => {
+    const ext = name.split('.').pop().toLowerCase();
+    if (ext === 'py') return 'vs-dark';
+    return 'vs'; // Monaco default light theme
+  };
+
+  if (activeTab === 'about') {
+    return <AboutPanel />;
+  }
+
   return (
     <Editor
       height="100%"
-      defaultLanguage="python"
-      theme="vs-dark"
+      language={getEditorLanguage(activeTabName)}
+      theme={getEditorTheme(activeTabName)}
       value={currentCode}
       onChange={handleEditorChange}
       onMount={handleEditorDidMount}

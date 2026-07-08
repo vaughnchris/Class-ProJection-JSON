@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileCode, Folder, FolderOpen, Search, Copy, CheckSquare, MessageCircle, Plus, GraduationCap, Trash2 } from 'lucide-react';
+import { FileCode, Folder, FolderOpen, Search, Copy, CheckSquare, MessageCircle, Plus, GraduationCap, Trash2, FileText, Table, File } from 'lucide-react';
 import useStore from '../../store/useStore';
 import ChatPanel from './ChatPanel';
 import './Sidebar.css';
@@ -32,19 +32,41 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     localStorage.setItem('ide_active_panels', JSON.stringify(activePanels));
   }, [activePanels]);
   
+  const getFileIcon = (filename) => {
+    const ext = filename.split('.').pop().toLowerCase();
+    switch (ext) {
+      case 'py':
+        return <FileCode size={14} className="file-icon-color" />;
+      case 'txt':
+        return <FileText size={14} className="txt-icon-color" />;
+      case 'csv':
+        return <Table size={14} className="csv-icon-color" />;
+      case 'tsv':
+        return <Table size={14} className="tsv-icon-color" />;
+      default:
+        return <File size={14} className="default-file-icon-color" />;
+    }
+  };
+
   const handleCreateNewTab = () => {
-    const tabCount = tabs.length;
+    const filename = prompt("Enter file name (e.g., data.csv, notes.txt, helper.py):");
+    if (!filename || filename.trim() === '') return;
+    
+    const name = filename.trim();
+    const hasExtension = name.includes('.');
+    const finalName = hasExtension ? name : name + '.py';
+    
     const newTabId = 'custom_' + Date.now();
     addTab({
       id: newTabId,
-      name: `untitled_${tabCount}.py`,
+      name: finalName,
       code: '',
       isCloseable: true
     });
   };
 
   const handleRenameTab = (tabId, currentName) => {
-    if (tabId === 'welcome.py') return;
+    if (tabId === 'about') return;
     const newName = prompt("Rename File:", currentName);
     if (newName && newName.trim() !== '') {
       const sanitizedName = newName.trim().endsWith('.py') ? newName.trim() : newName.trim() + '.py';
@@ -58,7 +80,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
   const handleDragDelete = (id) => {
     const tab = tabs.find(t => t.id === id);
-    if (!tab || tab.id === 'welcome.py') return;
+    if (!tab || tab.id === 'about') return;
     
     const confirmDelete = window.confirm(`Are you sure you want to permanently delete "${tab.name}"?`);
     if (confirmDelete) {
@@ -154,13 +176,13 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 className={`tree-item ${activeTab === tab.id ? 'active' : ''}`}
                 onClick={() => openTab(tab.id)}
                 onDoubleClick={() => handleRenameTab(tab.id, tab.name)}
-                draggable={tab.id !== 'welcome.py'}
+                draggable={tab.id !== 'about'}
                 onDragStart={(e) => handleDragStart(e, tab)}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '6px 12px', userSelect: 'none' }}
-                title={tab.id === 'welcome.py' ? "Main Workspace File" : "Drag to trash to delete, click to open, double-click to rename"}
+                title={tab.id === 'about' ? "IDE Welcome Info Panel" : "Drag to trash to delete, click to open, double-click to rename"}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <FileCode size={14} className="file-icon-color" />
+                  {getFileIcon(tab.name)}
                   <span>{tab.name}</span>
                 </div>
               </div>

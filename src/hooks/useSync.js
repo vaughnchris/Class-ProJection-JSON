@@ -78,8 +78,8 @@ export const useSync = () => {
           if (!isInstructor && !oldAllowEdit && newAllowEdit) {
             const newTabId = 'shared_' + Date.now();
             const currentTabs = useStore.getState().tabs;
-            // Subtract welcome.py (1) to name it Shared Code 1, 2, etc.
-            const sharedCount = currentTabs.filter(t => t.id !== 'welcome.py').length + 1;
+            // Subtract about (1) to name it Shared Code 1, 2, etc.
+            const sharedCount = currentTabs.filter(t => t.id !== 'about').length + 1;
             
             addTab({
               id: newTabId,
