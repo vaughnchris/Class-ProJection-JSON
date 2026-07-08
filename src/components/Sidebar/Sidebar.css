@@ -142,3 +142,17 @@
   font-size: 0.85rem;
   text-align: center;
 }
+
+.file-delete-btn {
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.tree-item:hover .file-delete-btn {
+  opacity: 0.7;
+}
+
+.file-delete-btn:hover {
+  opacity: 1 !important;
+  color: #ff6b6b !important;
+}

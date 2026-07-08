@@ -30,11 +30,19 @@ self.onmessage = async (event) => {
   try {
     const pyodide = await pyodideReadyPromise;
     
-    // Pass context variables (if any) to the python environment
-    for (const key of Object.keys(context)) {
-      self[key] = context[key];
+    // Write workspace files into Pyodide virtual filesystem (FS)
+    if (event.data.files && Array.isArray(event.data.files)) {
+      for (const file of event.data.files) {
+        if (file.name) {
+          try {
+            pyodide.FS.writeFile(file.name, file.code || '');
+          } catch (fsErr) {
+            console.error(`Failed to write file ${file.name} to Pyodide FS:`, fsErr);
+          }
+        }
+      }
     }
-    
+
     await pyodide.loadPackagesFromImports(python);
     
     // Execute python code

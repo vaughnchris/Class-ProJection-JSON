@@ -58,7 +58,7 @@ function App() {
     setActiveTab,
     tabs,
     addTab,
-    removeTab,
+    closeTab,
     renameTab,
     fontSize,
     increaseFontSize,
@@ -167,19 +167,7 @@ function App() {
   };
 
   const handleCloseTab = (tab) => {
-    const confirmSave = window.confirm(`Do you want to export/save "${tab.name}" before closing?`);
-    if (confirmSave) {
-      const blob = new Blob([tab.code], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = tab.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
-    removeTab(tab.id);
+    closeTab(tab.id);
   };
 
   const handleHorizontalResize = (sizes) => {
@@ -295,10 +283,16 @@ function App() {
     clearConsole();
     setExecuting(true);
     
+    const filesToMount = tabs.map((t) => ({
+      name: t.name,
+      code: t.code
+    }));
+
     workerRef.current.postMessage({
       python: currentCode,
       id: Date.now(),
-      isRepl: false
+      isRepl: false,
+      files: filesToMount
     });
   };
 
@@ -306,10 +300,17 @@ function App() {
     if (!workerRef.current) return;
     
     setInteractiveExecuting(true);
+    
+    const filesToMount = tabs.map((t) => ({
+      name: t.name,
+      code: t.code
+    }));
+
     workerRef.current.postMessage({
       python: code,
       id: Date.now(),
-      isRepl: true
+      isRepl: true,
+      files: filesToMount
     });
   };
 
@@ -408,7 +409,7 @@ function App() {
                 <div className="editor-container">
                   <div className="editor-tabs" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <div style={{ display: 'flex', height: '100%', overflowX: 'auto', overflowY: 'hidden', alignItems: 'center' }}>
-                      {tabs.map((tab) => (
+                      {tabs.filter(t => t.isOpen).map((tab) => (
                         <div 
                           key={tab.id}
                           className={`tab ${activeTab === tab.id ? 'active' : ''}`}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileCode, Folder, FolderOpen, Search, Copy, CheckSquare, MessageCircle, Plus, GraduationCap } from 'lucide-react';
+import { FileCode, Folder, FolderOpen, Search, Copy, CheckSquare, MessageCircle, Plus, GraduationCap, Trash2 } from 'lucide-react';
 import useStore from '../../store/useStore';
 import ChatPanel from './ChatPanel';
 import './Sidebar.css';
@@ -9,13 +9,105 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     const saved = localStorage.getItem('ide_active_panels');
     return saved ? JSON.parse(saved) : ['explorer'];
   });
+  const [isHoveringTrash, setIsHoveringTrash] = useState(false);
   
-  const { user, activeMode, isSharing, allowEdit, isSessionSyncing, updateSession } = useStore();
+  const { 
+    user, 
+    activeMode, 
+    isSharing, 
+    allowEdit, 
+    isSessionSyncing, 
+    updateSession,
+    tabs,
+    activeTab,
+    addTab,
+    closeTab,
+    openTab,
+    deleteTab,
+    renameTab,
+    setActiveTab
+  } = useStore();
   
   useEffect(() => {
     localStorage.setItem('ide_active_panels', JSON.stringify(activePanels));
   }, [activePanels]);
   
+  const handleCreateNewTab = () => {
+    const tabCount = tabs.length;
+    const newTabId = 'custom_' + Date.now();
+    addTab({
+      id: newTabId,
+      name: `untitled_${tabCount}.py`,
+      code: '',
+      isCloseable: true
+    });
+  };
+
+  const handleRenameTab = (tabId, currentName) => {
+    if (tabId === 'welcome.py') return;
+    const newName = prompt("Rename File:", currentName);
+    if (newName && newName.trim() !== '') {
+      const sanitizedName = newName.trim().endsWith('.py') ? newName.trim() : newName.trim() + '.py';
+      renameTab(tabId, sanitizedName);
+    }
+  };
+
+  const handleCloseTab = (tab) => {
+    closeTab(tab.id);
+  };
+
+  const handleDragDelete = (id) => {
+    const tab = tabs.find(t => t.id === id);
+    if (!tab || tab.id === 'welcome.py') return;
+    
+    const confirmDelete = window.confirm(`Are you sure you want to permanently delete "${tab.name}"?`);
+    if (confirmDelete) {
+      const confirmSave = window.confirm(`Do you want to export/save "${tab.name}" before deleting?`);
+      if (confirmSave) {
+        const blob = new Blob([tab.code], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = tab.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+      deleteTab(tab.id);
+    }
+  };
+
+  const handleDragStart = (e, tab) => {
+    e.dataTransfer.setData('text/plain', tab.id);
+    e.dataTransfer.effectAllowed = 'move';
+    
+    // Create custom ghost element
+    const dragIcon = document.createElement('div');
+    dragIcon.id = 'drag-ghost-image';
+    dragIcon.innerHTML = `📄 ${tab.name}`;
+    dragIcon.style.position = 'absolute';
+    dragIcon.style.top = '-1000px';
+    dragIcon.style.padding = '6px 12px';
+    dragIcon.style.background = '#1e293b';
+    dragIcon.style.color = '#f8fafc';
+    dragIcon.style.border = '1px solid #3b82f6';
+    dragIcon.style.borderRadius = '4px';
+    dragIcon.style.fontSize = '0.8rem';
+    dragIcon.style.fontFamily = 'monospace';
+    dragIcon.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+    document.body.appendChild(dragIcon);
+    
+    e.dataTransfer.setDragImage(dragIcon, 10, 10);
+    
+    setTimeout(() => {
+      const el = document.getElementById('drag-ghost-image');
+      if (el) {
+        document.body.removeChild(el);
+      }
+    }, 0);
+  };
+
   const hasInstructorAccess = user?.role === 'instructor' || user?.role === 'administrator';
 
   const handleIconClick = (panel) => {
@@ -56,24 +148,23 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       case 'explorer':
         return (
           <div className="file-tree">
-            <div className="tree-item active">
-              <FileCode size={14} className="file-icon-color" /> welcome.py
-            </div>
-            
-            <div className="tree-folder">
-              <div className="tree-item">
-                <FolderOpen size={14} className="folder-icon-color" /> utils
-              </div>
-              <div className="tree-children">
-                <div className="tree-item">
-                  <FileCode size={14} className="file-icon-color" /> calculator.py
+            {tabs.map((tab) => (
+              <div 
+                key={tab.id}
+                className={`tree-item ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => openTab(tab.id)}
+                onDoubleClick={() => handleRenameTab(tab.id, tab.name)}
+                draggable={tab.id !== 'welcome.py'}
+                onDragStart={(e) => handleDragStart(e, tab)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '6px 12px', userSelect: 'none' }}
+                title={tab.id === 'welcome.py' ? "Main Workspace File" : "Drag to trash to delete, click to open, double-click to rename"}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileCode size={14} className="file-icon-color" />
+                  <span>{tab.name}</span>
                 </div>
               </div>
-            </div>
-            
-            <div className="tree-item">
-              <FileCode size={14} className="md-icon-color" /> README.md
-            </div>
+            ))}
           </div>
         );
       case 'instructor':
@@ -199,7 +290,44 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           <div key={panel} className="sidebar-section">
             <div className="sidebar-header">
               <span>{panel.toUpperCase().replace('_', ' ')}</span>
-              <button className="icon-btn-small"><Plus size={16} /></button>
+              {panel === 'explorer' ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button 
+                    className="icon-btn-small" 
+                    onClick={handleCreateNewTab} 
+                    title="New File"
+                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    <Plus size={16} />
+                  </button>
+                  <button 
+                    className={`icon-btn-small ${isHoveringTrash ? 'trash-active' : ''}`}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDragEnter={() => setIsHoveringTrash(true)}
+                    onDragLeave={() => setIsHoveringTrash(false)}
+                    onDrop={(e) => {
+                      setIsHoveringTrash(false);
+                      const id = e.dataTransfer.getData('text/plain');
+                      handleDragDelete(id);
+                    }}
+                    style={{ 
+                      border: 'none', 
+                      background: 'transparent', 
+                      cursor: 'pointer', 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      color: isHoveringTrash ? '#ff6b6b' : 'var(--text-muted)',
+                      transform: isHoveringTrash ? 'scale(1.25)' : 'scale(1)',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Drag file here to delete permanently"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ) : (
+                <button className="icon-btn-small"><Plus size={16} /></button>
+              )}
             </div>
             <div className="sidebar-section-content">
               {renderPanelContent(panel)}

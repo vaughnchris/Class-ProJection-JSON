@@ -30,7 +30,8 @@ const useStore = create((set) => ({
       id: 'welcome.py', 
       name: 'welcome.py', 
       code: 'print("Welcome to Class Projection!")', 
-      isCloseable: false 
+      isCloseable: false,
+      isOpen: true
     }
   ],
   studentLocalCode: '',
@@ -92,19 +93,46 @@ const useStore = create((set) => ({
   }),
   addTab: (tab) => set((state) => {
     const isInstructor = state.role === 'instructor';
+    const newTab = { ...tab, isOpen: true };
     return { 
-      tabs: [...state.tabs, tab], 
+      tabs: [...state.tabs, newTab], 
       activeTab: tab.id,
       ...(isInstructor ? { instructorCode: tab.code } : {})
     };
   }),
-  removeTab: (id) => set((state) => {
+  closeTab: (id) => set((state) => {
+    const newTabs = state.tabs.map(t => t.id === id ? { ...t, isOpen: false } : t);
+    let nextActiveTab = state.activeTab;
+    if (state.activeTab === id) {
+      const openTabs = newTabs.filter(t => t.isOpen);
+      const idx = state.tabs.findIndex(t => t.id === id);
+      nextActiveTab = openTabs[Math.max(0, openTabs.length - 1)]?.id || 'welcome.py';
+    }
+    const isInstructor = state.role === 'instructor';
+    const activeTabObj = newTabs.find(t => t.id === nextActiveTab);
+    return { 
+      tabs: newTabs, 
+      activeTab: nextActiveTab,
+      ...(isInstructor && activeTabObj ? { instructorCode: activeTabObj.code } : {})
+    };
+  }),
+  openTab: (id) => set((state) => {
+    const newTabs = state.tabs.map(t => t.id === id ? { ...t, isOpen: true } : t);
+    const isInstructor = state.role === 'instructor';
+    const activeTabObj = newTabs.find(t => t.id === id);
+    return {
+      tabs: newTabs,
+      activeTab: id,
+      ...(isInstructor && activeTabObj ? { instructorCode: activeTabObj.code } : {})
+    };
+  }),
+  deleteTab: (id) => set((state) => {
     const activeTab = state.activeTab;
     const newTabs = state.tabs.filter(t => t.id !== id);
     let nextActiveTab = activeTab;
     if (activeTab === id) {
-      const idx = state.tabs.findIndex(t => t.id === id);
-      nextActiveTab = newTabs[Math.max(0, idx - 1)]?.id || 'welcome.py';
+      const openTabs = newTabs.filter(t => t.isOpen);
+      nextActiveTab = openTabs[Math.max(0, openTabs.length - 1)]?.id || 'welcome.py';
     }
     const isInstructor = state.role === 'instructor';
     const activeTabObj = newTabs.find(t => t.id === nextActiveTab);
