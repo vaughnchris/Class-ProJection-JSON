@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Terminal, Code, MessageSquare, Play } from 'lucide-react';
+import { Terminal, Code, MessageSquare, Trash2 } from 'lucide-react';
 import useStore from '../../store/useStore';
 import './ConsolePanel.css';
 
 const ConsolePanel = ({ onRunInteractive }) => {
   const [activeTab, setActiveTab] = useState('output');
   const [replInput, setReplInput] = useState('');
-  const { consoleOutput, interactiveHistory, isExecuting, isInteractiveExecuting, appendToInteractive } = useStore();
+  const { consoleOutput, interactiveHistory, isExecuting, isInteractiveExecuting, appendToInteractive, fontSize, clearConsole, clearInteractive } = useStore();
 
   return (
     <div className="console-panel">
@@ -32,13 +32,31 @@ const ConsolePanel = ({ onRunInteractive }) => {
           </button>
         </div>
         <div className="console-actions">
-          {/* Add quick actions like clear console here */}
+          <button
+            onClick={() => activeTab === 'interactive' ? clearInteractive() : clearConsole()}
+            title="Clear output"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '4px 6px',
+              borderRadius: '4px',
+              transition: 'color 0.15s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = '#f87171'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+          >
+            <Trash2 size={14} />
+          </button>
         </div>
       </div>
       
       <div className="console-content">
         {activeTab === 'output' && (
-          <div className="terminal-output">
+          <div className="terminal-output" style={{ fontSize: `${fontSize}px` }}>
             {consoleOutput.length === 0 && !isExecuting && (
               <div className="empty-state">Ready. Click Run to execute code.</div>
             )}
@@ -55,7 +73,7 @@ const ConsolePanel = ({ onRunInteractive }) => {
           </div>
         )}
         {activeTab === 'interactive' && (
-          <div className="terminal-output interactive-mode">
+          <div className="terminal-output interactive-mode" style={{ fontSize: `${fontSize}px` }}>
             {interactiveHistory.map((out, idx) => (
               <div key={idx} className={`terminal-line ${out.type === 'error' ? 'error-text' : (out.type === 'input' ? 'input-text' : 'system')}`}>
                 {out.text}
