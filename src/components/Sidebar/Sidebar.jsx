@@ -6,7 +6,7 @@ import './Sidebar.css';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const [activePanels, setActivePanels] = useState(['explorer']);
-  const { user, activeMode, setActiveMode } = useStore();
+  const { user, activeMode, setActiveMode, isSharing, setIsSharing, allowEdit, setAllowEdit } = useStore();
   
   const hasInstructorAccess = user?.role === 'instructor' || user?.role === 'administrator';
 
@@ -92,6 +92,31 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 Resume Broadcast Lock
               </button>
             )}
+
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              <button 
+                className={`btn ${isSharing ? 'btn-accent' : 'btn-outline'}`}
+                style={{ flex: 1, padding: '8px 4px', fontSize: '0.85rem' }}
+                onClick={() => {
+                  const nextSharing = !isSharing;
+                  setIsSharing(nextSharing);
+                  if (!nextSharing) {
+                    setAllowEdit(false);
+                  }
+                }}
+              >
+                {isSharing ? 'Stop Sharing' : 'Share'}
+              </button>
+              <button 
+                className={`btn ${allowEdit ? 'btn-accent' : 'btn-outline'}`}
+                style={{ flex: 1, padding: '8px 4px', fontSize: '0.85rem' }}
+                onClick={() => setAllowEdit(!allowEdit)}
+                disabled={!isSharing}
+                title={!isSharing ? "Start sharing code first" : "Allow students to edit the shared code tab"}
+              >
+                {allowEdit ? 'Edit Allowed' : 'Allow Edit'}
+              </button>
+            </div>
             
             <button className="btn btn-outline" style={{ width: '100%' }}>
               Push Snippet

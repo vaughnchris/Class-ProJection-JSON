@@ -11,15 +11,22 @@ export const useSync = () => {
     role, 
     instructorCode, 
     activeMode, 
+    isSharing,
+    allowEdit,
     setInstructorCode, 
     setActiveMode,
+    setIsSharing,
+    setAllowEdit,
     setStudentLocalCode,
-    studentLocalCode
+    studentLocalCode,
+    setStudentSharedLocalCode
   } = useStore();
 
   const isInstructor = role === 'instructor';
   const debounceTimerRef = useRef(null);
   const prevModeRef = useRef(activeMode);
+  const prevAllowEditRef = useRef(allowEdit);
+  const prevSharingRef = useRef(isSharing);
 
   // Instructor: Write to Firestore (Debounced)
   useEffect(() => {
@@ -35,7 +42,9 @@ export const useSync = () => {
       try {
         await setDoc(doc(db, SESSION_DOC), {
           instructorCode,
-          activeMode
+          activeMode,
+          isSharing,
+          allowEdit
         }, { merge: true });
       } catch (err) {
         console.error("Error syncing session state:", err);
@@ -43,7 +52,7 @@ export const useSync = () => {
     }, 500); // 500ms debounce
 
     return () => clearTimeout(debounceTimerRef.current);
-  }, [instructorCode, activeMode, isInstructor, user]);
+  }, [instructorCode, activeMode, isSharing, allowEdit, isInstructor, user]);
 
 
   // Student: Listen from Firestore
@@ -57,6 +66,35 @@ export const useSync = () => {
         // Update local instructor code
         if (data.instructorCode !== undefined) {
           setInstructorCode(data.instructorCode);
+        }
+
+        // Sync sharing state and handle transition to local workspace
+        if (data.isSharing !== undefined) {
+          const newSharing = data.isSharing;
+          const oldSharing = prevSharingRef.current;
+          
+          setIsSharing(newSharing);
+          prevSharingRef.current = newSharing;
+
+          // When sharing starts, snapshot the current instructor code to student's welcome.py workspace
+          if (!oldSharing && newSharing) {
+            setStudentLocalCode(data.instructorCode || '');
+          }
+        }
+
+        // Sync allowEdit state and handle transition to disconnected/independent student editing of the shared tab
+        if (data.allowEdit !== undefined) {
+          const newAllowEdit = data.allowEdit;
+          const oldAllowEdit = prevAllowEditRef.current;
+          
+          setAllowEdit(newAllowEdit);
+          prevAllowEditRef.current = newAllowEdit;
+
+          // Transitioning from lock/read-only to edit-allowed:
+          // Take snapshot of instructor code and set it as studentSharedLocalCode
+          if (!oldAllowEdit && newAllowEdit) {
+            setStudentSharedLocalCode(data.instructorCode || '');
+          }
         }
 
         // Handle Mode Changes
@@ -76,6 +114,6 @@ export const useSync = () => {
     });
 
     return () => unsubscribe();
-  }, [isInstructor, user, setInstructorCode, setActiveMode, setStudentLocalCode]);
+  }, [isInstructor, user, setInstructorCode, setActiveMode, setIsSharing, setAllowEdit, setStudentLocalCode, setStudentSharedLocalCode]);
 
 };

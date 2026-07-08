@@ -12,6 +12,8 @@ const useStore = create((set) => ({
   // Session Data
   sessionId: null,
   activeMode: 'broadcast', // 'independent' | 'broadcast' | 'execute'
+  isSharing: false,
+  allowEdit: false,
   
   // Instructor State
   instructorCode: 'print("Welcome to Class Projection!")',
@@ -20,6 +22,7 @@ const useStore = create((set) => ({
   
   // Student Local State
   studentLocalCode: '',
+  studentSharedLocalCode: '',
   studentNeedHelp: false,
 
   // Execution State
@@ -41,12 +44,15 @@ const useStore = create((set) => ({
   
   setSessionId: (sessionId) => set({ sessionId }),
   setActiveMode: (mode) => set({ activeMode: mode }),
+  setIsSharing: (isSharing) => set({ isSharing }),
+  setAllowEdit: (allowEdit) => set({ allowEdit }),
   
   setInstructorCode: (code) => set({ instructorCode: code }),
   setInstructorCursor: (cursor) => set({ instructorCursor: cursor }),
   setInstructorScroll: (scroll) => set({ instructorScroll: scroll }),
   
   setStudentLocalCode: (code) => set({ studentLocalCode: code }),
+  setStudentSharedLocalCode: (code) => set({ studentSharedLocalCode: code }),
   setStudentNeedHelp: (needsHelp) => set({ studentNeedHelp: needsHelp }),
 
   setExecuting: (isExecuting) => set({ isExecuting }),

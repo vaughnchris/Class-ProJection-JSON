@@ -23,11 +23,6 @@ const AuthModal = ({ isOpen, onClose }) => {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     const userDoc = await getDoc(userDocRef);
     
-    if (userDoc.exists()) {
-      return userDoc.data();
-    }
-    
-    // Create new user profile if it doesn't exist
     const emailStr = firebaseUser.email || '';
     const domain = emailStr.split('@')[1];
     
@@ -36,6 +31,17 @@ const AuthModal = ({ isOpen, onClose }) => {
       assignedRole = 'instructor';
     } else if (domain === 'my.yosemite.edu') {
       assignedRole = 'student';
+    }
+    
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      // Self-heal: If the document exists but is missing the role, write it immediately
+      if (!data.role) {
+        const healedData = { ...data, role: assignedRole, email: emailStr };
+        await setDoc(userDocRef, healedData, { merge: true });
+        return healedData;
+      }
+      return data;
     }
     
     // Extract a possible first name from the email and strip out any numbers (student ID)

@@ -19,7 +19,7 @@ import { useSync } from './hooks/useSync';
 import PyodideWorker from './utils/pyodide.worker.js?worker';
 import { auth, db } from './firebase';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import './App.css';
 
 function App() {
@@ -34,6 +34,7 @@ function App() {
     user,
     role,
     activeMode,
+    isSharing,
     instructorCode,
     studentLocalCode,
     isExecuting,
@@ -44,6 +45,12 @@ function App() {
     clearConsole,
     setUser
   } = useStore();
+
+  useEffect(() => {
+    if (!isSharing && activeTab === 'instructor_code') {
+      setActiveTab('welcome.py');
+    }
+  }, [isSharing, activeTab]);
 
   // Initialize Real-time synchronization
   useSync();
@@ -76,13 +83,24 @@ function App() {
     };
   }, [appendToConsole, setExecuting, appendToInteractive, setInteractiveExecuting]);
 
-  // Presence Tracking
+  // Presence Tracking & Session Restoration
   useEffect(() => {
     let currentUserUid = null;
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         currentUserUid = firebaseUser.uid;
+        
+        // Auto-restore user session from Firestore if logged in
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            setUser({ ...userDoc.data(), uid: firebaseUser.uid });
+          }
+        } catch (err) {
+          console.warn("Could not restore user session data:", err);
+        }
+
         try {
           const email = firebaseUser.email || '';
           const role = email.endsWith('@yosemite.edu') && !email.endsWith('@my.yosemite.edu') ? 'instructor' : 'student';
@@ -101,6 +119,7 @@ function App() {
           console.warn("Note: could not set online status (new user or doc missing)", e);
         }
       } else {
+        setUser(null);
         if (currentUserUid) {
           try {
             await updateDoc(doc(db, 'users', currentUserUid), { isOnline: false });
@@ -125,7 +144,7 @@ function App() {
       unsubscribe();
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, []);
+  }, [setUser]);
 
   const handleRun = () => {
     if (isExecuting) return;
@@ -248,13 +267,27 @@ function App() {
               <Allotment.Pane preferredSize={"70%"}>
                 <div className="editor-container">
                   <div className="editor-tabs">
-                    <div className={`tab ${activeTab === 'welcome.py' ? 'active' : ''}`}>
+                    <div 
+                      className={`tab ${activeTab === 'welcome.py' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('welcome.py')}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <span className="file-icon python-icon"></span>
                       welcome.py
                     </div>
+                    {isSharing && role !== 'instructor' && (
+                      <div 
+                        className={`tab ${activeTab === 'instructor_code' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('instructor_code')}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <span className="file-icon python-icon"></span>
+                        Instructor's Code (Shared)
+                      </div>
+                    )}
                   </div>
                   <div className="editor-wrapper">
-                    <CodeEditor />
+                    <CodeEditor activeTab={activeTab} />
                   </div>
                 </div>
               </Allotment.Pane>
