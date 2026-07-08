@@ -6,7 +6,7 @@ import './Sidebar.css';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const [activePanels, setActivePanels] = useState(['explorer']);
-  const { user, activeMode, setActiveMode, isSharing, setIsSharing, allowEdit, setAllowEdit } = useStore();
+  const { user, activeMode, isSharing, allowEdit, isSessionSyncing, updateSession } = useStore();
   
   const hasInstructorAccess = user?.role === 'instructor' || user?.role === 'administrator';
 
@@ -79,7 +79,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               <button 
                 className="btn btn-primary" 
                 style={{ width: '100%', marginBottom: '12px' }}
-                onClick={() => setActiveMode('execute')}
+                onClick={() => updateSession({ activeMode: 'execute' })}
+                disabled={isSessionSyncing}
               >
                 Release to Students
               </button>
@@ -87,7 +88,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               <button 
                 className="btn btn-accent" 
                 style={{ width: '100%', marginBottom: '12px' }}
-                onClick={() => setActiveMode('broadcast')}
+                onClick={() => updateSession({ activeMode: 'broadcast' })}
+                disabled={isSessionSyncing}
               >
                 Resume Broadcast Lock
               </button>
@@ -97,12 +99,13 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               <button 
                 className={`btn ${isSharing ? 'btn-accent' : 'btn-outline'}`}
                 style={{ flex: 1, padding: '8px 4px', fontSize: '0.85rem' }}
+                disabled={isSessionSyncing}
                 onClick={() => {
                   const nextSharing = !isSharing;
-                  setIsSharing(nextSharing);
-                  if (!nextSharing) {
-                    setAllowEdit(false);
-                  }
+                  updateSession({ 
+                    isSharing: nextSharing,
+                    ...(nextSharing ? {} : { allowEdit: false })
+                  });
                 }}
               >
                 {isSharing ? 'Stop Sharing' : 'Share'}
@@ -110,8 +113,13 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               <button 
                 className={`btn ${allowEdit ? 'btn-accent' : 'btn-outline'}`}
                 style={{ flex: 1, padding: '8px 4px', fontSize: '0.85rem' }}
-                onClick={() => setAllowEdit(!allowEdit)}
-                disabled={!isSharing}
+                onClick={async () => {
+                  await updateSession({ allowEdit: true });
+                  setTimeout(() => {
+                    updateSession({ isSharing: false, allowEdit: false });
+                  }, 800);
+                }}
+                disabled={isSessionSyncing || !isSharing}
                 title={!isSharing ? "Start sharing code first" : "Allow students to edit the shared code tab"}
               >
                 {allowEdit ? 'Edit Allowed' : 'Allow Edit'}

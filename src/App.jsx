@@ -23,7 +23,6 @@ import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import './App.css';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('welcome.py');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -43,14 +42,17 @@ function App() {
     appendToConsole,
     appendToInteractive,
     clearConsole,
-    setUser
+    setUser,
+    activeTab,
+    setActiveTab,
+    sharedTabs
   } = useStore();
 
   useEffect(() => {
     if (!isSharing && activeTab === 'instructor_code') {
       setActiveTab('welcome.py');
     }
-  }, [isSharing, activeTab]);
+  }, [isSharing, activeTab, setActiveTab]);
 
   // Initialize Real-time synchronization
   useSync();
@@ -275,6 +277,17 @@ function App() {
                       <span className="file-icon python-icon"></span>
                       welcome.py
                     </div>
+                    {role !== 'instructor' && sharedTabs.map((tab) => (
+                      <div 
+                        key={tab.id}
+                        className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+                        onClick={() => setActiveTab(tab.id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <span className="file-icon python-icon"></span>
+                        {tab.name}
+                      </div>
+                    ))}
                     {isSharing && role !== 'instructor' && (
                       <div 
                         className={`tab ${activeTab === 'instructor_code' ? 'active' : ''}`}

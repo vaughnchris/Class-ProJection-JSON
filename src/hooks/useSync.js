@@ -19,16 +19,18 @@ export const useSync = () => {
     setAllowEdit,
     setStudentLocalCode,
     studentLocalCode,
-    setStudentSharedLocalCode
+    setStudentSharedLocalCode,
+    setSessionSyncing,
+    addSharedTab,
+    setActiveTab
   } = useStore();
 
   const isInstructor = role === 'instructor';
   const debounceTimerRef = useRef(null);
   const prevModeRef = useRef(activeMode);
   const prevAllowEditRef = useRef(allowEdit);
-  const prevSharingRef = useRef(isSharing);
 
-  // Instructor: Write to Firestore (Debounced)
+  // Instructor: Sync Code (Debounced to protect database writes)
   useEffect(() => {
     if (!user || !isInstructor) return;
 
@@ -37,25 +39,69 @@ export const useSync = () => {
       clearTimeout(debounceTimerRef.current);
     }
 
-    // Debounce the write to prevent hitting Firestore limits on every keystroke
     debounceTimerRef.current = setTimeout(async () => {
       try {
         await setDoc(doc(db, SESSION_DOC), {
-          instructorCode,
-          activeMode,
-          isSharing,
-          allowEdit
+          instructorCode
         }, { merge: true });
       } catch (err) {
-        console.error("Error syncing session state:", err);
+        console.error("Error syncing code state:", err);
       }
-    }, 500); // 500ms debounce
+    }, 500); // 500ms debounce for keystrokes
 
     return () => clearTimeout(debounceTimerRef.current);
-  }, [instructorCode, activeMode, isSharing, allowEdit, isInstructor, user]);
+  }, [instructorCode, isInstructor, user]);
 
 
-  // Student: Listen from Firestore
+  // Both: Listen to control state changes from Firestore (Single source of truth for controls)
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = onSnapshot(doc(db, SESSION_DOC), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        
+        // Sync sharing state
+        if (data.isSharing !== undefined) {
+          setIsSharing(data.isSharing);
+        }
+
+        // Sync allowEdit state
+        if (data.allowEdit !== undefined) {
+          const newAllowEdit = data.allowEdit;
+          const oldAllowEdit = prevAllowEditRef.current;
+          prevAllowEditRef.current = newAllowEdit;
+
+          setAllowEdit(newAllowEdit);
+
+          // If allowEdit transitions to true, create a new persistent editable shared tab for the student
+          if (!isInstructor && !oldAllowEdit && newAllowEdit) {
+            const newTabId = 'shared_' + Date.now();
+            const currentTabs = useStore.getState().sharedTabs;
+            const tabNumber = currentTabs.length + 1;
+            
+            addSharedTab({
+              id: newTabId,
+              name: `Shared Code ${tabNumber}`,
+              code: data.instructorCode || ''
+            });
+            setActiveTab(newTabId);
+          }
+        }
+
+        // Sync activeMode
+        if (data.activeMode !== undefined) {
+          setActiveMode(data.activeMode);
+        }
+      }
+    }, (err) => {
+      console.error("Error in classroom control session listener:", err);
+    });
+
+    return () => unsubscribe();
+  }, [user, setIsSharing, setAllowEdit, setActiveMode, addSharedTab, setActiveTab, isInstructor]);
+
+  // Student-Only: Listen to code updates
   useEffect(() => {
     if (!user || isInstructor) return;
 
@@ -68,41 +114,10 @@ export const useSync = () => {
           setInstructorCode(data.instructorCode);
         }
 
-        // Sync sharing state and handle transition to local workspace
-        if (data.isSharing !== undefined) {
-          const newSharing = data.isSharing;
-          const oldSharing = prevSharingRef.current;
-          
-          setIsSharing(newSharing);
-          prevSharingRef.current = newSharing;
-
-          // When sharing starts, snapshot the current instructor code to student's welcome.py workspace
-          if (!oldSharing && newSharing) {
-            setStudentLocalCode(data.instructorCode || '');
-          }
-        }
-
-        // Sync allowEdit state and handle transition to disconnected/independent student editing of the shared tab
-        if (data.allowEdit !== undefined) {
-          const newAllowEdit = data.allowEdit;
-          const oldAllowEdit = prevAllowEditRef.current;
-          
-          setAllowEdit(newAllowEdit);
-          prevAllowEditRef.current = newAllowEdit;
-
-          // Transitioning from lock/read-only to edit-allowed:
-          // Take snapshot of instructor code and set it as studentSharedLocalCode
-          if (!oldAllowEdit && newAllowEdit) {
-            setStudentSharedLocalCode(data.instructorCode || '');
-          }
-        }
-
         // Handle Mode Changes
         if (data.activeMode !== undefined) {
           const newMode = data.activeMode;
           const oldMode = prevModeRef.current;
-          
-          setActiveMode(newMode);
           prevModeRef.current = newMode;
 
           // If transitioning from Broadcast to Execute, snapshot the instructor code to student local code
@@ -111,9 +126,11 @@ export const useSync = () => {
           }
         }
       }
+    }, (err) => {
+      console.error("Error in student code sync listener:", err);
     });
 
     return () => unsubscribe();
-  }, [isInstructor, user, setInstructorCode, setActiveMode, setIsSharing, setAllowEdit, setStudentLocalCode, setStudentSharedLocalCode]);
+  }, [isInstructor, user, setInstructorCode, setStudentLocalCode]);
 
 };

@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { db } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 const useStore = create((set) => ({
   // User Profile
@@ -14,6 +16,7 @@ const useStore = create((set) => ({
   activeMode: 'broadcast', // 'independent' | 'broadcast' | 'execute'
   isSharing: false,
   allowEdit: false,
+  isSessionSyncing: false,
   
   // Instructor State
   instructorCode: 'print("Welcome to Class Projection!")',
@@ -21,6 +24,8 @@ const useStore = create((set) => ({
   instructorScroll: 0,
   
   // Student Local State
+  activeTab: 'welcome.py',
+  sharedTabs: [], // array of { id, name, code }
   studentLocalCode: '',
   studentSharedLocalCode: '',
   studentNeedHelp: false,
@@ -46,11 +51,17 @@ const useStore = create((set) => ({
   setActiveMode: (mode) => set({ activeMode: mode }),
   setIsSharing: (isSharing) => set({ isSharing }),
   setAllowEdit: (allowEdit) => set({ allowEdit }),
+  setSessionSyncing: (isSessionSyncing) => set({ isSessionSyncing }),
   
   setInstructorCode: (code) => set({ instructorCode: code }),
   setInstructorCursor: (cursor) => set({ instructorCursor: cursor }),
   setInstructorScroll: (scroll) => set({ instructorScroll: scroll }),
   
+  setActiveTab: (activeTab) => set({ activeTab }),
+  addSharedTab: (tab) => set((state) => ({ sharedTabs: [...state.sharedTabs, tab] })),
+  updateSharedTabCode: (id, code) => set((state) => ({
+    sharedTabs: state.sharedTabs.map((t) => (t.id === id ? { ...t, code } : t))
+  })),
   setStudentLocalCode: (code) => set({ studentLocalCode: code }),
   setStudentSharedLocalCode: (code) => set({ studentSharedLocalCode: code }),
   setStudentNeedHelp: (needsHelp) => set({ studentNeedHelp: needsHelp }),
@@ -68,6 +79,17 @@ const useStore = create((set) => ({
   })),
   clearInteractive: () => set({ interactiveHistory: [] }),
   
+  updateSession: async (fields) => {
+    set({ isSessionSyncing: true });
+    try {
+      await setDoc(doc(db, 'sessions/main_classroom'), fields, { merge: true });
+    } catch (err) {
+      console.error("Error updating session in Firebase:", err);
+    } finally {
+      set({ isSessionSyncing: false });
+    }
+  },
+
   // Helper to sync remote state from Firebase
   syncFromFirebase: (data) => set((state) => ({
     ...state,

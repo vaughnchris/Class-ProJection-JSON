@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getAuth, setPersistence, browserSessionPersistence } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -16,5 +16,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+
+// Set persistence to session-only to allow side-by-side tab testing of different roles
+setPersistence(auth, browserSessionPersistence).catch((err) => {
+  console.error("Failed to set auth persistence:", err);
+});
 
 export { db, auth, app };
