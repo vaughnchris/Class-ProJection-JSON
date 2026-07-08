@@ -69,8 +69,10 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     if (tabId === 'about') return;
     const newName = prompt("Rename File:", currentName);
     if (newName && newName.trim() !== '') {
-      const sanitizedName = newName.trim().endsWith('.py') ? newName.trim() : newName.trim() + '.py';
-      renameTab(tabId, sanitizedName);
+      const trimmed = newName.trim();
+      const hasExtension = trimmed.includes('.');
+      const finalName = hasExtension ? trimmed : trimmed + '.py';
+      renameTab(tabId, finalName);
     }
   };
 

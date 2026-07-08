@@ -6,15 +6,53 @@ importScripts('https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js');
 let pyodideReadyPromise;
 let currentMode = 'script';
 
+let lastStdout = '';
+
+// Expose get_user_input on self so it can be called from Pyodide
+self.get_user_input = (promptText) => {
+  try {
+    const xhr = new XMLHttpRequest();
+    const promptParam = encodeURIComponent(promptText || 'Input requested:');
+    // Synchronous XMLHttpRequest to Service Worker Intercept
+    xhr.open('GET', `/api/input?prompt=${promptParam}&r=${Math.random()}`, false);
+    xhr.send(null);
+    return xhr.responseText;
+  } catch (err) {
+    console.error("Error fetching stdin from service worker:", err);
+    return '';
+  }
+};
+
 async function loadPyodideAndPackages() {
   self.pyodide = await loadPyodide({
     stdout: (text) => {
+      lastStdout = text;
       self.postMessage({ type: currentMode === 'repl' ? 'repl_output' : 'output', text });
     },
     stderr: (text) => {
       self.postMessage({ type: currentMode === 'repl' ? 'repl_error' : 'error', text });
-    },
+    }
   });
+
+  // Inject the custom builtins.input override immediately after loading Pyodide
+  try {
+    await self.pyodide.runPythonAsync(`
+import builtins
+import js
+
+def custom_input(prompt=""):
+    if prompt:
+        print(prompt, end="")
+    val = js.get_user_input(str(prompt))
+    print(val)
+    return val
+
+builtins.input = custom_input
+    `);
+  } catch (err) {
+    console.error("Failed to override builtins.input in Pyodide:", err);
+  }
+
   return self.pyodide;
 }
 

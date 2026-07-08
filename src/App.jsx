@@ -36,6 +36,7 @@ function App() {
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [swReady, setSwReady] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('ide_is_sidebar_open', isSidebarOpen);
@@ -188,8 +189,10 @@ function App() {
     if (tabId === 'about') return;
     const newName = prompt("Rename Tab:", currentName);
     if (newName && newName.trim() !== '') {
-      const sanitizedName = newName.trim().endsWith('.py') ? newName.trim() : newName.trim() + '.py';
-      renameTab(tabId, sanitizedName);
+      const trimmed = newName.trim();
+      const hasExtension = trimmed.includes('.');
+      const finalName = hasExtension ? trimmed : trimmed + '.py';
+      renameTab(tabId, finalName);
     }
   };
 
@@ -212,6 +215,8 @@ function App() {
   };
 
   useEffect(() => {
+    if (!swReady) return;
+
     // Initialize Web Worker
     workerRef.current = new PyodideWorker();
     
@@ -237,13 +242,77 @@ function App() {
         workerRef.current.terminate();
       }
     };
-  }, [appendToConsole, setExecuting, appendToInteractive, setInteractiveExecuting]);
+  }, [swReady, appendToConsole, setExecuting, appendToInteractive, setInteractiveExecuting]);
 
   // Always display the About tab at the beginning of each session
   useEffect(() => {
     openTab('about');
     setActiveTab('about');
   }, [openTab, setActiveTab]);
+
+  // Register Service Worker and listen for synchronous stdin INPUT_REQUEST messages
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      const checkController = () => {
+        if (navigator.serviceWorker.controller) {
+          setSwReady(true);
+        }
+      };
+
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => {
+          if (navigator.serviceWorker.controller) {
+            setSwReady(true);
+          } else {
+            // Wait for controller to claim focus
+            navigator.serviceWorker.ready.then(() => {
+              if (navigator.serviceWorker.controller) {
+                setSwReady(true);
+              } else if (reg.active) {
+                // If it is active but not controlling, notify page that controller changed
+                reg.active.postMessage({ type: 'CLAIM_CLIENTS' });
+              }
+            });
+          }
+        })
+        .catch((err) => {
+          console.error('Service Worker registration failed:', err);
+          setSwReady(true); // fallback so we don't break app boot
+        });
+
+      navigator.serviceWorker.addEventListener('controllerchange', checkController);
+
+      const handleSWMessage = (event) => {
+        if (event.data && event.data.type === 'INPUT_REQUEST') {
+          const { requestId, prompt: promptText } = event.data;
+          
+          // Show the native browser input dialog to the user
+          const userInput = prompt(decodeURIComponent(promptText) || 'Python input:') || '';
+          
+          // Send the response back to the service worker controller
+          if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+              type: 'INPUT_RESPONSE',
+              requestId,
+              text: userInput
+            });
+          }
+        }
+      };
+
+      navigator.serviceWorker.addEventListener('message', handleSWMessage);
+      
+      // Perform initial check
+      checkController();
+
+      return () => {
+        navigator.serviceWorker.removeEventListener('controllerchange', checkController);
+        navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+      };
+    } else {
+      setSwReady(true);
+    }
+  }, []);
 
   // Presence Tracking & Session Restoration
   useEffect(() => {
@@ -378,10 +447,10 @@ function App() {
           <button 
             className="btn btn-primary run-btn" 
             onClick={handleRun}
-            disabled={isExecuting}
-            style={{ opacity: isExecuting ? 0.7 : 1, cursor: isExecuting ? 'not-allowed' : 'pointer' }}
+            disabled={isExecuting || !swReady}
+            style={{ opacity: (isExecuting || !swReady) ? 0.7 : 1, cursor: (isExecuting || !swReady) ? 'not-allowed' : 'pointer' }}
           >
-            <Play size={16} /> {isExecuting ? 'Running...' : 'Run'}
+            <Play size={16} /> {isExecuting ? 'Running...' : (!swReady ? 'Initializing...' : 'Run')}
           </button>
           <button className="btn btn-secondary ai-btn">
             <Sparkles size={16} /> AI Check
