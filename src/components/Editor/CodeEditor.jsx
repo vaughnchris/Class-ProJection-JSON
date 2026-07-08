@@ -10,10 +10,10 @@ const CodeEditor = ({ activeTab }) => {
     role, 
     isSharing,
     studentLocalCode,
-    sharedTabs,
+    tabs,
     setStudentLocalCode,
-    setInstructorCode,
-    updateSharedTabCode
+    updateTabCode,
+    fontSize
   } = useStore();
 
   const isInstructor = role === 'instructor';
@@ -39,33 +39,27 @@ const CodeEditor = ({ activeTab }) => {
   );
   
   // Display code logic:
-  // - Instructor always sees instructorCode.
+  // - Instructor sees the current active tab code.
   // - Student sees:
   //   - instructorCode if viewing 'instructor_code'.
   //   - instructorCode if viewing 'welcome.py' in broadcast lock AND NOT sharing.
   //   - studentLocalCode if viewing 'welcome.py' in independent/execute mode OR if sharing.
   //   - tab.code if viewing a custom shared tab.
   const currentCode = isInstructor 
-    ? instructorCode 
+    ? (tabs.find(t => t.id === activeTab)?.code || '')
     : (activeTab === 'instructor_code' 
         ? instructorCode 
         : (activeTab === 'welcome.py' 
             ? ((activeMode === 'broadcast' && !isSharing) ? instructorCode : studentLocalCode)
-            : (sharedTabs.find(t => t.id === activeTab)?.code || '')));
+            : (tabs.find(t => t.id === activeTab)?.code || '')));
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
   };
 
   const handleEditorChange = (value) => {
-    if (isInstructor) {
-      setInstructorCode(value);
-    } else {
-      if (activeTab === 'welcome.py') {
-        setStudentLocalCode(value);
-      } else if (activeTab !== 'instructor_code') {
-        updateSharedTabCode(activeTab, value);
-      }
+    if (activeTab !== 'instructor_code') {
+      updateTabCode(activeTab, value);
     }
   };
 
@@ -80,7 +74,7 @@ const CodeEditor = ({ activeTab }) => {
       options={{
         readOnly: isReadOnly,
         minimap: { enabled: false },
-        fontSize: 14,
+        fontSize: fontSize,
         fontFamily: 'Fira Code, monospace',
         wordWrap: 'on',
         padding: { top: 16 },

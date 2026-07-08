@@ -5,8 +5,16 @@ import ChatPanel from './ChatPanel';
 import './Sidebar.css';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
-  const [activePanels, setActivePanels] = useState(['explorer']);
+  const [activePanels, setActivePanels] = useState(() => {
+    const saved = localStorage.getItem('ide_active_panels');
+    return saved ? JSON.parse(saved) : ['explorer'];
+  });
+  
   const { user, activeMode, isSharing, allowEdit, isSessionSyncing, updateSession } = useStore();
+  
+  useEffect(() => {
+    localStorage.setItem('ide_active_panels', JSON.stringify(activePanels));
+  }, [activePanels]);
   
   const hasInstructorAccess = user?.role === 'instructor' || user?.role === 'administrator';
 

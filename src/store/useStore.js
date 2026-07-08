@@ -25,9 +25,15 @@ const useStore = create((set) => ({
   
   // Student Local State
   activeTab: 'welcome.py',
-  sharedTabs: [], // array of { id, name, code }
+  tabs: [
+    { 
+      id: 'welcome.py', 
+      name: 'welcome.py', 
+      code: 'print("Welcome to Class Projection!")', 
+      isCloseable: false 
+    }
+  ],
   studentLocalCode: '',
-  studentSharedLocalCode: '',
   studentNeedHelp: false,
 
   // Execution State
@@ -53,17 +59,88 @@ const useStore = create((set) => ({
   setAllowEdit: (allowEdit) => set({ allowEdit }),
   setSessionSyncing: (isSessionSyncing) => set({ isSessionSyncing }),
   
-  setInstructorCode: (code) => set({ instructorCode: code }),
+  // Font Size
+  fontSize: Number(localStorage.getItem('ide_font_size')) || 14,
+  increaseFontSize: () => set((state) => {
+    const nextSize = Math.min(state.fontSize + 1, 36);
+    localStorage.setItem('ide_font_size', nextSize);
+    return { fontSize: nextSize };
+  }),
+  decreaseFontSize: () => set((state) => {
+    const nextSize = Math.max(state.fontSize - 1, 9);
+    localStorage.setItem('ide_font_size', nextSize);
+    return { fontSize: nextSize };
+  }),
+  
+  setInstructorCode: (code) => set((state) => ({ 
+    instructorCode: code,
+    // Also keep the welcome.py tab code in sync for the instructor
+    tabs: state.role === 'instructor' 
+      ? state.tabs.map(t => t.id === 'welcome.py' ? { ...t, code } : t)
+      : state.tabs
+  })),
   setInstructorCursor: (cursor) => set({ instructorCursor: cursor }),
   setInstructorScroll: (scroll) => set({ instructorScroll: scroll }),
   
-  setActiveTab: (activeTab) => set({ activeTab }),
-  addSharedTab: (tab) => set((state) => ({ sharedTabs: [...state.sharedTabs, tab] })),
-  updateSharedTabCode: (id, code) => set((state) => ({
-    sharedTabs: state.sharedTabs.map((t) => (t.id === id ? { ...t, code } : t))
+  setActiveTab: (tabId) => set((state) => {
+    const isInstructor = state.role === 'instructor';
+    const activeTabObj = state.tabs.find(t => t.id === tabId);
+    return {
+      activeTab: tabId,
+      ...(isInstructor && activeTabObj ? { instructorCode: activeTabObj.code } : {})
+    };
+  }),
+  addTab: (tab) => set((state) => {
+    const isInstructor = state.role === 'instructor';
+    return { 
+      tabs: [...state.tabs, tab], 
+      activeTab: tab.id,
+      ...(isInstructor ? { instructorCode: tab.code } : {})
+    };
+  }),
+  removeTab: (id) => set((state) => {
+    const activeTab = state.activeTab;
+    const newTabs = state.tabs.filter(t => t.id !== id);
+    let nextActiveTab = activeTab;
+    if (activeTab === id) {
+      const idx = state.tabs.findIndex(t => t.id === id);
+      nextActiveTab = newTabs[Math.max(0, idx - 1)]?.id || 'welcome.py';
+    }
+    const isInstructor = state.role === 'instructor';
+    const activeTabObj = newTabs.find(t => t.id === nextActiveTab);
+    return { 
+      tabs: newTabs, 
+      activeTab: nextActiveTab,
+      ...(isInstructor && activeTabObj ? { instructorCode: activeTabObj.code } : {})
+    };
+  }),
+  renameTab: (id, name) => set((state) => ({
+    tabs: state.tabs.map((t) => (t.id === id ? { ...t, name } : t))
   })),
-  setStudentLocalCode: (code) => set({ studentLocalCode: code }),
-  setStudentSharedLocalCode: (code) => set({ studentSharedLocalCode: code }),
+  updateTabCode: (id, code) => set((state) => {
+    const isInstructor = state.role === 'instructor';
+    const extraUpdates = {};
+    if (id === 'welcome.py') {
+      if (isInstructor) {
+        extraUpdates.instructorCode = code;
+      } else {
+        extraUpdates.studentLocalCode = code;
+      }
+    } else if (isInstructor && id === state.activeTab) {
+      extraUpdates.instructorCode = code;
+    }
+    return {
+      tabs: state.tabs.map((t) => (t.id === id ? { ...t, code } : t)),
+      ...extraUpdates
+    };
+  }),
+  setStudentLocalCode: (code) => set((state) => ({ 
+    studentLocalCode: code,
+    // Also keep the welcome.py tab code in sync for the student
+    tabs: state.role !== 'instructor' 
+      ? state.tabs.map(t => t.id === 'welcome.py' ? { ...t, code } : t)
+      : state.tabs
+  })),
   setStudentNeedHelp: (needsHelp) => set({ studentNeedHelp: needsHelp }),
 
   setExecuting: (isExecuting) => set({ isExecuting }),

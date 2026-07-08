@@ -21,7 +21,7 @@ export const useSync = () => {
     studentLocalCode,
     setStudentSharedLocalCode,
     setSessionSyncing,
-    addSharedTab,
+    addTab,
     setActiveTab
   } = useStore();
 
@@ -77,13 +77,15 @@ export const useSync = () => {
           // If allowEdit transitions to true, create a new persistent editable shared tab for the student
           if (!isInstructor && !oldAllowEdit && newAllowEdit) {
             const newTabId = 'shared_' + Date.now();
-            const currentTabs = useStore.getState().sharedTabs;
-            const tabNumber = currentTabs.length + 1;
+            const currentTabs = useStore.getState().tabs;
+            // Subtract welcome.py (1) to name it Shared Code 1, 2, etc.
+            const sharedCount = currentTabs.filter(t => t.id !== 'welcome.py').length + 1;
             
-            addSharedTab({
+            addTab({
               id: newTabId,
-              name: `Shared Code ${tabNumber}`,
-              code: data.instructorCode || ''
+              name: `Shared Code ${sharedCount}`,
+              code: data.instructorCode || '',
+              isCloseable: true
             });
             setActiveTab(newTabId);
           }
@@ -99,7 +101,7 @@ export const useSync = () => {
     });
 
     return () => unsubscribe();
-  }, [user, setIsSharing, setAllowEdit, setActiveMode, addSharedTab, setActiveTab, isInstructor]);
+  }, [user, setIsSharing, setAllowEdit, setActiveMode, addTab, setActiveTab, isInstructor]);
 
   // Student-Only: Listen to code updates
   useEffect(() => {

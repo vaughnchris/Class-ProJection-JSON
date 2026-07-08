@@ -131,3 +131,8 @@
 .sash:hover {
   --focus-border: var(--accent-blue);
 }
+
+.tab-close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ff6b6b !important;
+}
