@@ -204,16 +204,21 @@ const CodeEditor = ({ activeTab }) => {
 
   const activeTabObj = tabs.find(t => t.id === activeTab);
   const activeTabName = activeTabObj?.name || 'about';
-  const getEditorLanguage = (name) => {
+  const isPythonTab = (name) => {
     const ext = name.split('.').pop().toLowerCase();
-    if (ext === 'py') return 'python';
+    return ext === 'py'
+      || activeTab === 'instructor_code'
+      || activeTab.startsWith('shared_');
+  };
+
+  const getEditorLanguage = (name) => {
+    if (isPythonTab(name)) return 'python';
     return 'plaintext';
   };
 
   const getEditorTheme = (name) => {
-    const ext = name.split('.').pop().toLowerCase();
-    if (ext === 'py') return 'vs-dark';
-    return 'vs'; // Monaco default light theme
+    if (isPythonTab(name)) return 'vs-dark';
+    return 'vs'; // Light theme for data/text files
   };
 
   if (activeTab === 'about') {

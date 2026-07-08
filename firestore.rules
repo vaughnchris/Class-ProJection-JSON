@@ -1,0 +1,63 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isInstructor() {
+      // Instructor emails end with @yosemite.edu (not @my.yosemite.edu)
+      return isSignedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email.matches('.*@yosemite\\.edu$')
+        && !request.auth.token.email.matches('.*@my\\.yosemite\\.edu$');
+    }
+
+    // ─── User Profiles (/users/{uid}) ────────────────────────────────────────
+    match /users/{uid} {
+      // Any signed-in user can read all profiles (needed for chat user list)
+      allow read: if isSignedIn();
+
+      // Users can only write to their own profile; instructors can write any
+      allow write: if isSignedIn() && (request.auth.uid == uid || isInstructor());
+    }
+
+    // ─── Classroom Session (/sessions/main_classroom) ───────────────────────
+    // The useSync hook writes to 'sessions/main_classroom'
+    match /sessions/{document=**} {
+      allow read: if isSignedIn();
+      allow write: if isInstructor();
+    }
+
+    // Legacy path fallback (keep for safety)
+    match /classroom/{document=**} {
+      allow read: if isSignedIn();
+      allow write: if isInstructor();
+    }
+
+    // ─── Authorized Students (/authorized_students/{email}) ───────────────────
+    // Document ID is the student's email address (lowercase)
+    match /authorized_students/{email} {
+      // Any signed-in user can read (needed for login check in AuthModal)
+      allow read: if isSignedIn();
+
+      // Only instructors can add, update, or remove students from the roster
+      allow write: if isInstructor();
+      allow delete: if isInstructor();
+    }
+
+    // ─── Chat Messages (/chats/{chatId}/messages/{msgId}) ─────────────────────
+    match /chats/{chatId}/messages/{msgId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      // Only the author or an instructor can delete a message
+      allow delete: if isSignedIn()
+        && (request.auth.uid == resource.data.uid || isInstructor());
+      allow update: if false; // messages are immutable once sent
+    }
+
+  }
+}

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FileCode, Folder, FolderOpen, Search, Copy, CheckSquare, MessageCircle, Plus, GraduationCap, Trash2, FileText, Table, File } from 'lucide-react';
+import { FileCode, Folder, FolderOpen, Search, Copy, CheckSquare, MessageCircle, Plus, GraduationCap, Trash2, FileText, Table, File, Users } from 'lucide-react';
 import useStore from '../../store/useStore';
 import ChatPanel from './ChatPanel';
+import RosterPanel from './RosterPanel';
 import './Sidebar.css';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
@@ -254,6 +255,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </button>
           </div>
         );
+      case 'roster':
+        if (!hasInstructorAccess) return null;
+        return <RosterPanel />;
       case 'chat':
         return <ChatPanel />;
       default:
@@ -303,8 +307,18 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           <div 
             className={`sidebar-icon ${activePanels.includes('instructor') && isOpen ? 'active' : ''}`}
             onClick={() => handleIconClick('instructor')}
+            title="Instructor Controls"
           >
             <GraduationCap size={24} />
+          </div>
+        )}
+        {hasInstructorAccess && (
+          <div 
+            className={`sidebar-icon ${activePanels.includes('roster') && isOpen ? 'active' : ''}`}
+            onClick={() => handleIconClick('roster')}
+            title="Student Roster"
+          >
+            <Users size={24} />
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword, updatePassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, updatePassword, signOut } from 'firebase/auth';
 import { auth, db } from '../../firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection } from 'firebase/firestore';
 import useStore from '../../store/useStore';
 import { X } from 'lucide-react';
 import './AuthModal.css';
@@ -70,6 +70,26 @@ const AuthModal = ({ isOpen, onClose }) => {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userEmail = (userCredential.user.email || '').toLowerCase();
+      const domain = userEmail.split('@')[1];
+      const isInstructor = domain === 'yosemite.edu';
+      const isStudent = domain === 'my.yosemite.edu' || !isInstructor;
+
+      // For students: verify they are on the authorized roster
+      if (isStudent) {
+        try {
+          const rosterDoc = await getDoc(doc(db, 'authorized_students', userEmail));
+          if (!rosterDoc.exists()) {
+            await signOut(auth);
+            setError('Your email is not on the authorized student list. Please contact your instructor.');
+            setLoading(false);
+            return;
+          }
+        } catch (rosterErr) {
+          console.warn('Could not verify roster, allowing login:', rosterErr);
+          // If Firestore is unavailable, allow login to avoid lockout
+        }
+      }
       
       // Check if they used the default password
       if (password === 'passwd') {
