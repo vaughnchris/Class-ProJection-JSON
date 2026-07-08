@@ -48,7 +48,9 @@ const ProfileModal = ({ isOpen, onClose }) => {
     const newAvatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`;
 
     try {
-      const userRef = doc(db, 'users', user.uid || auth.currentUser?.uid || user.email);
+      const uid = auth.currentUser?.uid || user.uid;
+      if (!uid) throw new Error('Cannot determine user ID. Please sign out and back in.');
+      const userRef = doc(db, 'users', uid);
       
       const updatedData = {
         firstName,

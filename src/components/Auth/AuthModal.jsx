@@ -75,7 +75,7 @@ const AuthModal = ({ isOpen, onClose }) => {
       // Fetch or create user role/profile from Firestore
       try {
         const userData = await initializeOrGetUser(userCredential.user);
-        setUser(userData);
+        setUser({ ...userData, uid: userCredential.user.uid });
       } catch (err) {
          console.warn("Firestore error, falling back to mock user:", err);
          setUser({
@@ -114,7 +114,7 @@ const AuthModal = ({ isOpen, onClose }) => {
       // Fetch or create user profile after password update
       try {
         const userData = await initializeOrGetUser(auth.currentUser);
-        setUser(userData);
+        setUser({ ...userData, uid: auth.currentUser.uid });
       } catch (dbErr) {
         console.warn("Firestore error, falling back to mock user:", dbErr);
         setUser({

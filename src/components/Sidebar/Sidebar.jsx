@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { FileCode, Folder, FolderOpen, Search, Copy, CheckSquare, MessageCircle, Plus, GraduationCap } from 'lucide-react';
 import useStore from '../../store/useStore';
+import ChatPanel from './ChatPanel';
 import './Sidebar.css';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const [activePanels, setActivePanels] = useState(['explorer']);
-  const { user } = useStore();
+  const { user, activeMode, setActiveMode } = useStore();
   
   const hasInstructorAccess = user?.role === 'instructor' || user?.role === 'administrator';
 
@@ -74,14 +75,31 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>
               Instructor Controls
             </p>
-            <button className="btn btn-primary" style={{ width: '100%', marginBottom: '12px' }}>
-              Release to Students
-            </button>
+            {activeMode === 'broadcast' ? (
+              <button 
+                className="btn btn-primary" 
+                style={{ width: '100%', marginBottom: '12px' }}
+                onClick={() => setActiveMode('execute')}
+              >
+                Release to Students
+              </button>
+            ) : (
+              <button 
+                className="btn btn-accent" 
+                style={{ width: '100%', marginBottom: '12px' }}
+                onClick={() => setActiveMode('broadcast')}
+              >
+                Resume Broadcast Lock
+              </button>
+            )}
+            
             <button className="btn btn-outline" style={{ width: '100%' }}>
               Push Snippet
             </button>
           </div>
         );
+      case 'chat':
+        return <ChatPanel />;
       default:
         return (
           <div className="empty-panel">

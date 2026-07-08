@@ -15,9 +15,11 @@ import Sidebar from './components/Sidebar/Sidebar';
 import AuthModal from './components/Auth/AuthModal';
 import ProfileModal from './components/Auth/ProfileModal';
 import useStore from './store/useStore';
+import { useSync } from './hooks/useSync';
 import PyodideWorker from './utils/pyodide.worker.js?worker';
-import { auth } from './firebase';
-import { signOut } from 'firebase/auth';
+import { auth, db } from './firebase';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
 import './App.css';
 
 function App() {
@@ -42,6 +44,9 @@ function App() {
     clearConsole,
     setUser
   } = useStore();
+
+  // Initialize Real-time synchronization
+  useSync();
 
   useEffect(() => {
     // Initialize Web Worker
@@ -70,6 +75,57 @@ function App() {
       }
     };
   }, [appendToConsole, setExecuting, appendToInteractive, setInteractiveExecuting]);
+
+  // Presence Tracking
+  useEffect(() => {
+    let currentUserUid = null;
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        currentUserUid = firebaseUser.uid;
+        try {
+          const email = firebaseUser.email || '';
+          const role = email.endsWith('@yosemite.edu') && !email.endsWith('@my.yosemite.edu') ? 'instructor' : 'student';
+          
+          // Use updateDoc (NOT setDoc) so we only update the isOnline flag on an
+          // EXISTING document. setDoc with merge would create a minimal document
+          // that races with initializeOrGetUser, wiping out firstName/lastName/avatarUrl.
+          await updateDoc(doc(db, 'users', currentUserUid), { 
+            isOnline: true,
+            email,
+            role
+          });
+        } catch (e) {
+          // Ignore — doc may not exist yet for brand-new users.
+          // initializeOrGetUser() in the login flow will create the full document.
+          console.warn("Note: could not set online status (new user or doc missing)", e);
+        }
+      } else {
+        if (currentUserUid) {
+          try {
+            await updateDoc(doc(db, 'users', currentUserUid), { isOnline: false });
+          } catch (e) {
+            console.warn("Failed to set offline status", e);
+          }
+          currentUserUid = null;
+        }
+      }
+    });
+
+    const handleBeforeUnload = () => {
+      if (currentUserUid) {
+        // We use keepalive or just fire and forget, browser might cancel it but it's best effort
+        updateDoc(doc(db, 'users', currentUserUid), { isOnline: false }).catch(() => {});
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
 
   const handleRun = () => {
     if (isExecuting) return;
@@ -100,6 +156,9 @@ function App() {
 
   const handleSignOut = async () => {
     try {
+      if (auth.currentUser) {
+        await updateDoc(doc(db, 'users', auth.currentUser.uid), { isOnline: false });
+      }
       await signOut(auth);
       setUser(null);
     } catch (err) {

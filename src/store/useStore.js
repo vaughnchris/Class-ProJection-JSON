@@ -11,7 +11,7 @@ const useStore = create((set) => ({
 
   // Session Data
   sessionId: null,
-  activeMode: 'independent', // 'independent' | 'broadcast'
+  activeMode: 'broadcast', // 'independent' | 'broadcast' | 'execute'
   
   // Instructor State
   instructorCode: 'print("Welcome to Class Projection!")',
