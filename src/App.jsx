@@ -59,9 +59,9 @@ function App() {
     appendToInteractive,
     clearConsole,
     setUser,
-    activeTab,
+    activeTab: storeActiveTab,
     setActiveTab,
-    tabs,
+    tabs: storeTabs,
     addTab,
     closeTab,
     openTab,
@@ -71,11 +71,24 @@ function App() {
     decreaseFontSize
   } = useStore();
 
-  useEffect(() => {
-    if (!isSharing && activeTab === 'instructor_code') {
-      setActiveTab('about');
-    }
-  }, [isSharing, activeTab, setActiveTab]);
+  const viewedStudentId = useStore(state => state.viewedStudentId);
+  const viewedStudentTabs = useStore(state => state.viewedStudentTabs);
+  const viewedStudentActiveTab = useStore(state => state.viewedStudentActiveTab);
+  const viewedStudentMode = useStore(state => state.viewedStudentMode);
+
+  const instructorTabs = useStore(state => state.instructorTabs);
+  const instructorActiveTab = useStore(state => state.instructorActiveTab);
+
+  const isInstructor = role === 'instructor';
+  const showSharedLecture = !isInstructor && isSharing && activeMode === 'broadcast';
+
+  const tabs = viewedStudentId 
+    ? viewedStudentTabs 
+    : (showSharedLecture && instructorTabs && instructorTabs.length > 0 ? instructorTabs : storeTabs);
+
+  const activeTab = viewedStudentId 
+    ? viewedStudentActiveTab 
+    : (showSharedLecture && instructorTabs && instructorTabs.length > 0 ? instructorActiveTab : storeActiveTab);
 
   // Initialize Real-time synchronization
   useSync();
@@ -440,7 +453,23 @@ function App() {
           >
             <Menu size={18} />
           </button>
-          <div className="logo">Class ProJection - Python Editor</div>
+          <div className="logo">
+            Class ProJection - Python Editor
+            {viewedStudentId && (
+              <span style={{ 
+                marginLeft: '12px', 
+                fontSize: '0.8rem', 
+                fontWeight: 600, 
+                padding: '3px 10px', 
+                borderRadius: '4px',
+                backgroundColor: viewedStudentMode === 'view' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(139, 92, 246, 0.15)',
+                color: viewedStudentMode === 'view' ? 'var(--accent-blue)' : 'var(--accent-purple)',
+                border: viewedStudentMode === 'view' ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid rgba(139, 92, 246, 0.2)'
+              }}>
+                {viewedStudentMode === 'view' ? '👁 Viewing Student' : '✍ Editing Student'}
+              </span>
+            )}
+          </div>
         </div>
         
         <div className="navbar-center">
@@ -461,7 +490,9 @@ function App() {
         </div>
         
         <div className="navbar-right">
-          <button className="icon-btn"><Settings size={18} /></button>
+          {(role === 'instructor' || role === 'admin') && (
+            <button className="icon-btn"><Settings size={18} /></button>
+          )}
           
           {user ? (
             <div className="user-menu" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -514,15 +545,15 @@ function App() {
                       {tabs.filter(t => t.isOpen).map((tab) => (
                         <div 
                           key={tab.id}
-                          className={`tab ${activeTab === tab.id ? 'active' : ''}`}
-                          onClick={() => setActiveTab(tab.id)}
-                          onDoubleClick={() => handleRenameTab(tab.id, tab.name)}
-                          style={{ cursor: 'pointer', position: 'relative', paddingRight: tab.isCloseable ? '28px' : '16px', userSelect: 'none', display: 'flex', alignItems: 'center' }}
-                          title="Double-click to rename tab"
+                          className={`tab ${activeTab === tab.id ? 'active' : ''} ${(viewedStudentId || showSharedLecture) ? 'shared-tab' : ''}`}
+                          onClick={() => !showSharedLecture && setActiveTab(tab.id)}
+                          onDoubleClick={() => !showSharedLecture && handleRenameTab(tab.id, tab.name)}
+                          style={{ cursor: 'pointer', position: 'relative', paddingRight: (tab.isCloseable && !showSharedLecture) ? '28px' : '16px', userSelect: 'none', display: 'flex', alignItems: 'center' }}
+                          title={showSharedLecture ? "Shared Lecture File" : "Double-click to rename tab"}
                         >
                           {getFileIcon(tab.name)}
                           <span style={{ marginLeft: '6px' }}>{tab.name}</span>
-                          {tab.isCloseable && (
+                          {tab.isCloseable && !showSharedLecture && (
                             <span 
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -551,41 +582,36 @@ function App() {
                           )}
                         </div>
                       ))}
-                      {isSharing && role !== 'instructor' && (
-                        <div 
-                          className={`tab ${activeTab === 'instructor_code' ? 'active' : ''}`}
-                          onClick={() => setActiveTab('instructor_code')}
-                          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      {!showSharedLecture && (
+                        <button 
+                          onClick={handleCreateNewTab}
+                          className="btn btn-outline"
+                          style={{ padding: '0 8px', border: 'none', height: '100%', borderRadius: 0, minWidth: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}
+                          title="New Blank Tab"
                         >
-                          <FileCode size={14} className="file-icon-color" style={{ color: '#fbbf24' }} />
-                          <span style={{ marginLeft: '6px' }}>Instructor's Code (Shared)</span>
-                        </div>
+                          +
+                        </button>
                       )}
-                      
-                      <button 
-                        onClick={handleCreateNewTab}
-                        className="btn btn-outline"
-                        style={{ padding: '0 8px', border: 'none', height: '100%', borderRadius: 0, minWidth: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}
-                        title="New Blank Tab"
-                      >
-                        +
-                      </button>
 
-                      <button 
-                        onClick={triggerFileInput}
-                        className="btn btn-outline"
-                        style={{ padding: '0 8px', border: 'none', height: '100%', borderRadius: 0, minWidth: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}
-                        title="Open Local File"
-                      >
-                        <Upload size={14} />
-                      </button>
-                      <input 
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleOpenFile}
-                        accept=".py,.txt,.csv,.tsv"
-                        style={{ display: 'none' }}
-                      />
+                      {!showSharedLecture && (
+                        <>
+                          <button 
+                            onClick={triggerFileInput}
+                            className="btn btn-outline"
+                            style={{ padding: '0 8px', border: 'none', height: '100%', borderRadius: 0, minWidth: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}
+                            title="Open Local File"
+                          >
+                            <Upload size={14} />
+                          </button>
+                          <input 
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleOpenFile}
+                            accept=".py,.txt,.csv,.tsv"
+                            style={{ display: 'none' }}
+                          />
+                        </>
+                      )}
                     </div>
                     
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '12px' }}>

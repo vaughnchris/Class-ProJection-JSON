@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import useStore from '../store/useStore';
 
@@ -19,16 +19,26 @@ export const useSync = () => {
     setAllowEdit,
     setStudentLocalCode,
     studentLocalCode,
-    setStudentSharedLocalCode,
     setSessionSyncing,
     addTab,
-    setActiveTab
+    setActiveTab,
+    tabs,
+    activeTab,
+    activityInstructions,
+    setActivityInstructions,
+    setInstructorTabs,
+    setInstructorActiveTab
   } = useStore();
 
   const isInstructor = role === 'instructor';
   const debounceTimerRef = useRef(null);
+  const studentDebounceTimerRef = useRef(null);
   const prevModeRef = useRef(activeMode);
   const prevAllowEditRef = useRef(allowEdit);
+
+  const viewedStudentId = useStore(state => state.viewedStudentId);
+  const viewedStudentMode = useStore(state => state.viewedStudentMode);
+  const viewedStudentTabs = useStore(state => state.viewedStudentTabs);
 
   // Instructor: Sync Code (Debounced to protect database writes)
   useEffect(() => {
@@ -41,16 +51,36 @@ export const useSync = () => {
 
     debounceTimerRef.current = setTimeout(async () => {
       try {
+        const activeTabObj = tabs.find(t => t.id === activeTab);
         await setDoc(doc(db, SESSION_DOC), {
-          instructorCode
+          instructorTabs: tabs,
+          instructorActiveTab: activeTab,
+          instructorCode: activeTabObj?.code || ''
         }, { merge: true });
       } catch (err) {
-        console.error("Error syncing code state:", err);
+        console.error("Error syncing instructor workspace state:", err);
       }
     }, 500); // 500ms debounce for keystrokes
 
     return () => clearTimeout(debounceTimerRef.current);
-  }, [instructorCode, isInstructor, user]);
+  }, [tabs, activeTab, isInstructor, user]);
+
+  // Instructor: Sync activityInstructions to Firestore (Debounced)
+  useEffect(() => {
+    if (!user || !isInstructor) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        await setDoc(doc(db, SESSION_DOC), {
+          activityInstructions
+        }, { merge: true });
+      } catch (err) {
+        console.error("Error syncing activity instructions:", err);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [activityInstructions, isInstructor, user]);
 
 
   // Both: Listen to control state changes from Firestore (Single source of truth for controls)
@@ -74,20 +104,44 @@ export const useSync = () => {
 
           setAllowEdit(newAllowEdit);
 
-          // If allowEdit transitions to true, create a new persistent editable shared tab for the student
-          if (!isInstructor && !oldAllowEdit && newAllowEdit) {
-            const newTabId = 'shared_' + Date.now();
+          // If allowEdit transitions to true, create persistent editable shared tabs for all instructor tabs
+          if (!isInstructor && !oldAllowEdit && newAllowEdit && data.instructorTabs) {
             const currentTabs = useStore.getState().tabs;
-            // Subtract about (1) to name it Shared Code 1, 2, etc.
-            const sharedCount = currentTabs.filter(t => t.id !== 'about').length + 1;
-            
-            addTab({
-              id: newTabId,
-              name: `Shared Code ${sharedCount}`,
-              code: data.instructorCode || '',
-              isCloseable: true
+            const newTabs = [...currentTabs];
+            let firstNewTabId = null;
+
+            data.instructorTabs.forEach(instTab => {
+              if (instTab.id === 'about') return;
+
+              let targetName = instTab.name;
+              let suffixCount = 1;
+              while (newTabs.some(t => t.name === targetName)) {
+                const parts = instTab.name.split('.');
+                if (parts.length > 1) {
+                  const ext = parts.pop();
+                  targetName = `${parts.join('.')}_${suffixCount}.${ext}`;
+                } else {
+                  targetName = `${instTab.name}_${suffixCount}`;
+                }
+                suffixCount++;
+              }
+
+              const newTabId = 'shared_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+              if (!firstNewTabId) firstNewTabId = newTabId;
+
+              newTabs.push({
+                id: newTabId,
+                name: targetName,
+                code: instTab.code,
+                isCloseable: true,
+                isOpen: true
+              });
             });
-            setActiveTab(newTabId);
+
+            useStore.setState({ 
+              tabs: newTabs, 
+              activeTab: firstNewTabId || useStore.getState().activeTab 
+            });
           }
         }
 
@@ -95,13 +149,37 @@ export const useSync = () => {
         if (data.activeMode !== undefined) {
           setActiveMode(data.activeMode);
         }
+
+        // Sync activityInstructions
+        if (data.activityInstructions !== undefined) {
+          setActivityInstructions(data.activityInstructions);
+        }
+
+        // Sync instructor's shared workspace tabs
+        if (data.instructorTabs !== undefined) {
+          setInstructorTabs(data.instructorTabs);
+        }
+        if (data.instructorActiveTab !== undefined) {
+          setInstructorActiveTab(data.instructorActiveTab);
+        }
       }
     }, (err) => {
       console.error("Error in classroom control session listener:", err);
     });
 
     return () => unsubscribe();
-  }, [user, setIsSharing, setAllowEdit, setActiveMode, addTab, setActiveTab, isInstructor]);
+  }, [user, setIsSharing, setAllowEdit, setActiveMode, addTab, setActiveTab, isInstructor, setInstructorTabs, setInstructorActiveTab]);
+
+  // Student-Only: Focus the shared lecture tab when sharing starts
+  useEffect(() => {
+    if (isInstructor || !user) return;
+    if (isSharing) {
+      const currentInstructorActiveTab = useStore.getState().instructorActiveTab;
+      if (currentInstructorActiveTab) {
+        setActiveTab(currentInstructorActiveTab);
+      }
+    }
+  }, [isSharing, isInstructor, user, setActiveTab]);
 
   // Student-Only: Listen to code updates
   useEffect(() => {
@@ -122,9 +200,44 @@ export const useSync = () => {
           const oldMode = prevModeRef.current;
           prevModeRef.current = newMode;
 
-          // If transitioning from Broadcast to Execute, snapshot the instructor code to student local code
-          if (oldMode === 'broadcast' && newMode === 'execute') {
-            setStudentLocalCode(data.instructorCode || '');
+          // If transitioning from Broadcast to Execute, merge all instructor tabs into student workspace without overwriting
+          if (oldMode === 'broadcast' && newMode === 'execute' && data.instructorTabs) {
+            const currentTabs = useStore.getState().tabs;
+            const newTabs = [...currentTabs];
+            let firstNewTabId = null;
+
+            data.instructorTabs.forEach(instTab => {
+              if (instTab.id === 'about') return;
+
+              let targetName = instTab.name;
+              let suffixCount = 1;
+              while (newTabs.some(t => t.name === targetName)) {
+                const parts = instTab.name.split('.');
+                if (parts.length > 1) {
+                  const ext = parts.pop();
+                  targetName = `${parts.join('.')}_${suffixCount}.${ext}`;
+                } else {
+                  targetName = `${instTab.name}_${suffixCount}`;
+                }
+                suffixCount++;
+              }
+
+              const newTabId = 'shared_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+              if (!firstNewTabId) firstNewTabId = newTabId;
+
+              newTabs.push({
+                id: newTabId,
+                name: targetName,
+                code: instTab.code,
+                isCloseable: true,
+                isOpen: true
+              });
+            });
+
+            useStore.setState({ 
+              tabs: newTabs, 
+              activeTab: firstNewTabId || useStore.getState().activeTab 
+            });
           }
         }
       }
@@ -133,6 +246,94 @@ export const useSync = () => {
     });
 
     return () => unsubscribe();
-  }, [isInstructor, user, setInstructorCode, setStudentLocalCode]);
+  }, [isInstructor, user, setInstructorCode]);
 
+  // Student-Only: Sync workspace/tabs to Firestore user doc
+  useEffect(() => {
+    if (!user || isInstructor) return;
+
+    if (studentDebounceTimerRef.current) {
+      clearTimeout(studentDebounceTimerRef.current);
+    }
+
+    studentDebounceTimerRef.current = setTimeout(async () => {
+      try {
+        const currentTabs = useStore.getState().tabs;
+        const currentActiveTab = useStore.getState().activeTab;
+        await updateDoc(doc(db, 'users', user.uid), {
+          sharedTabs: currentTabs,
+          sharedActiveTab: currentActiveTab
+        });
+      } catch (err) {
+        console.error("Error syncing student workspace to Firestore:", err);
+      }
+    }, 500);
+
+    return () => clearTimeout(studentDebounceTimerRef.current);
+  }, [tabs, activeTab, isInstructor, user]);
+
+  // Student-Only: Listen to remote updates to own workspace (edits from Instructor)
+  useEffect(() => {
+    if (!user || isInstructor) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.sharedTabs) {
+          const currentTabs = useStore.getState().tabs;
+          if (JSON.stringify(currentTabs) !== JSON.stringify(data.sharedTabs)) {
+            useStore.setState({ tabs: data.sharedTabs });
+          }
+        }
+        if (data.sharedActiveTab !== undefined) {
+          const currentActiveTab = useStore.getState().activeTab;
+          if (currentActiveTab !== data.sharedActiveTab) {
+            useStore.setState({ activeTab: data.sharedActiveTab });
+          }
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isInstructor, user]);
+
+  // Instructor-Only: Listen to remote updates of the viewed student
+  useEffect(() => {
+    if (!user || !isInstructor || !viewedStudentId) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'users', viewedStudentId), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.sharedTabs) {
+          useStore.setState({ viewedStudentTabs: data.sharedTabs });
+        }
+        if (data.sharedActiveTab) {
+          useStore.setState({ viewedStudentActiveTab: data.sharedActiveTab });
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user, isInstructor, viewedStudentId]);
+
+  // Instructor-Only: Sync instructor's workspace edits back to the viewed student's Firestore user doc
+  useEffect(() => {
+    if (!user || !isInstructor || !viewedStudentId || viewedStudentMode !== 'edit') return;
+
+    if (studentDebounceTimerRef.current) {
+      clearTimeout(studentDebounceTimerRef.current);
+    }
+
+    studentDebounceTimerRef.current = setTimeout(async () => {
+      try {
+        await updateDoc(doc(db, viewedStudentId ? `users/${viewedStudentId}` : 'users/dummy'), {
+          sharedTabs: viewedStudentTabs
+        });
+      } catch (err) {
+        console.error("Error syncing instructor edits to student workspace:", err);
+      }
+    }, 500);
+
+    return () => clearTimeout(studentDebounceTimerRef.current);
+  }, [viewedStudentTabs, viewedStudentId, viewedStudentMode, isInstructor, user]);
 };

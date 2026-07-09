@@ -119,6 +119,23 @@
   border-top: 2px solid var(--accent-blue);
 }
 
+.tab.shared-tab {
+  background-color: rgba(239, 68, 68, 0.04);
+  color: #f87171;
+  border-right: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+.tab.shared-tab:hover {
+  background-color: rgba(239, 68, 68, 0.08);
+}
+
+.tab.shared-tab.active {
+  background-color: #1e1e1e;
+  color: #fca5a5;
+  border-top: 2px solid #ef4444;
+}
+
+
 .editor-wrapper {
   flex: 1;
   position: relative;

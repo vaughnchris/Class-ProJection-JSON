@@ -36,6 +36,14 @@ const useStore = create((set) => ({
   ],
   studentLocalCode: '',
   studentNeedHelp: false,
+  selectedChatUser: null,
+  viewedStudentId: null,
+  viewedStudentMode: null,
+  viewedStudentTabs: [],
+  viewedStudentActiveTab: null,
+  activityInstructions: '',
+  instructorTabs: [],
+  instructorActiveTab: null,
 
   // Execution State
   consoleOutput: [],
@@ -59,6 +67,14 @@ const useStore = create((set) => ({
   setIsSharing: (isSharing) => set({ isSharing }),
   setAllowEdit: (allowEdit) => set({ allowEdit }),
   setSessionSyncing: (isSessionSyncing) => set({ isSessionSyncing }),
+  setSelectedChatUser: (selectedChatUser) => set({ selectedChatUser }),
+  setViewedStudentId: (viewedStudentId) => set({ viewedStudentId }),
+  setViewedStudentMode: (viewedStudentMode) => set({ viewedStudentMode }),
+  setViewedStudentTabs: (viewedStudentTabs) => set({ viewedStudentTabs }),
+  setViewedStudentActiveTab: (viewedStudentActiveTab) => set({ viewedStudentActiveTab }),
+  setActivityInstructions: (activityInstructions) => set({ activityInstructions }),
+  setInstructorTabs: (instructorTabs) => set({ instructorTabs }),
+  setInstructorActiveTab: (instructorActiveTab) => set({ instructorActiveTab }),
   
   // Font Size
   fontSize: Number(localStorage.getItem('ide_font_size')) || 14,
@@ -83,6 +99,9 @@ const useStore = create((set) => ({
   setInstructorScroll: (scroll) => set({ instructorScroll: scroll }),
   
   setActiveTab: (tabId) => set((state) => {
+    if (state.role === 'instructor' && state.viewedStudentId) {
+      return { viewedStudentActiveTab: tabId };
+    }
     const isInstructor = state.role === 'instructor';
     const activeTabObj = state.tabs.find(t => t.id === tabId);
     return {
@@ -145,6 +164,11 @@ const useStore = create((set) => ({
     tabs: state.tabs.map((t) => (t.id === id ? { ...t, name } : t))
   })),
   updateTabCode: (id, code) => set((state) => {
+    if (state.role === 'instructor' && state.viewedStudentId && state.viewedStudentMode === 'edit') {
+      return {
+        viewedStudentTabs: state.viewedStudentTabs.map((t) => (t.id === id ? { ...t, code } : t))
+      };
+    }
     const isInstructor = state.role === 'instructor';
     const extraUpdates = {};
     if (isInstructor && id === state.activeTab) {

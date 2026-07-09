@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, query, onSnapshot, orderBy, addDoc, serverTimestamp, getDocs, deleteDoc, doc, limit } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, addDoc, serverTimestamp, getDocs, deleteDoc, doc, limit, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import useStore from '../../store/useStore';
-import { ArrowLeft, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, Send, Trash2, GraduationCap } from 'lucide-react';
 import './ChatPanel.css';
 
 // Helper: generate deterministic chat room ID from two UIDs
@@ -11,9 +11,18 @@ const getChatId = (uid1, uid2) => {
 };
 
 const ChatPanel = () => {
-  const { user } = useStore();
+  const { 
+    user, 
+    selectedChatUser, 
+    setSelectedChatUser,
+    viewedStudentId,
+    viewedStudentMode,
+    setViewedStudentId,
+    setViewedStudentMode
+  } = useStore();
   const [users, setUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const selectedUser = selectedChatUser;
+  const setSelectedUser = setSelectedChatUser;
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sendError, setSendError] = useState('');
@@ -22,9 +31,56 @@ const ChatPanel = () => {
   // lastReadAt: { [chatId]: timestamp(ms) } — when we last opened a chat
   const lastReadAt = useRef({});
   const messagesEndRef = useRef(null);
+  
+  const [myNeedsHelp, setMyNeedsHelp] = useState(false);
+  const [helpRequesting, setHelpRequesting] = useState(false);
 
   const myUid = user?.uid;
   const isInstructor = user?.role === 'instructor';
+
+  // Listen to own user doc to track needsHelp status in real time
+  useEffect(() => {
+    if (!myUid) return;
+    const unsubscribe = onSnapshot(doc(db, 'users', myUid), (snap) => {
+      if (snap.exists()) {
+        setMyNeedsHelp(snap.data().needsHelp || false);
+      }
+    });
+    return () => unsubscribe();
+  }, [myUid]);
+
+  const handleToggleHelp = async () => {
+    if (!myUid || helpRequesting) return;
+    setHelpRequesting(true);
+    try {
+      const next = !myNeedsHelp;
+      await updateDoc(doc(db, 'users', myUid), {
+        needsHelp: next,
+        helpRequestedAt: next ? serverTimestamp() : null
+      });
+    } catch (err) {
+      console.error('Error toggling help request:', err);
+    } finally {
+      setHelpRequesting(false);
+    }
+  };
+
+  const handleResolveHelp = async () => {
+    if (!selectedUser || helpRequesting) return;
+    setHelpRequesting(true);
+    try {
+      await updateDoc(doc(db, 'users', selectedUser.id), {
+        needsHelp: false,
+        helpRequestedAt: null
+      });
+      setViewedStudentId(null);
+      setViewedStudentMode(null);
+    } catch (err) {
+      console.error('Error resolving help request:', err);
+    } finally {
+      setHelpRequesting(false);
+    }
+  };
 
   // Fetch users for list view
   useEffect(() => {
@@ -47,6 +103,8 @@ const ChatPanel = () => {
     return () => unsubscribe();
   }, [myUid]);
 
+
+
   // Subscribe to unread indicators for ALL chats (global + each DM)
   useEffect(() => {
     if (!myUid || !users.length) return;
@@ -58,9 +116,9 @@ const ChatPanel = () => {
 
     const unsubs = chatIds.map(chatId => {
       // Only set the baseline timestamp on FIRST subscription for this chatId.
-      // Do NOT reset it on re-subscription (e.g., caused by isOnline changes),
-      // otherwise messages sent while subscriptions were active get missed.
-      if (lastReadAt.current[chatId] === undefined) {
+      // Do NOT reset on re-subscription (e.g., caused by isOnline changes),
+      // otherwise messages received while subscriptions are active get missed.
+      if (!(chatId in lastReadAt.current)) {
         lastReadAt.current[chatId] = Date.now();
       }
 
@@ -189,13 +247,21 @@ const ChatPanel = () => {
     return <div className="chat-empty">Please sign in to chat.</div>;
   }
 
-  // Conversation View
   if (selectedUser) {
     const canClear = selectedUser.id !== 'global' || isInstructor;
+    const activeStudent = users.find(u => u.id === selectedUser.id) || selectedUser;
     return (
       <div className="chat-container">
         <div className="chat-header">
-          <button className="icon-btn-small" onClick={() => { setSelectedUser(null); setMessages([]); setSendError(''); }}>
+          <button className="icon-btn-small" onClick={() => { 
+            setSelectedUser(null); 
+            setMessages([]); 
+            setSendError(''); 
+            if (isInstructor) {
+              setViewedStudentId(null);
+              setViewedStudentMode(null);
+            }
+          }}>
             <ArrowLeft size={16} />
           </button>
           <div className="chat-header-user">
@@ -205,12 +271,111 @@ const ChatPanel = () => {
             }
             <span>{selectedUser.firstName} {selectedUser.lastName}</span>
           </div>
+          
+          {/* Help Request Button for Students chatting with an Instructor */}
+          {!isInstructor && selectedUser.role === 'instructor' && (
+            <button
+              className={`icon-btn-small help-header-btn ${myNeedsHelp ? 'help-active' : ''}`}
+              onClick={handleToggleHelp}
+              disabled={helpRequesting}
+              title={myNeedsHelp ? 'Cancel Help Request' : 'Request Instructor Assistance'}
+              style={{ 
+                marginLeft: 'auto', 
+                marginRight: '8px', 
+                color: myNeedsHelp ? 'var(--accent-red)' : 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px',
+                borderRadius: '50%'
+              }}
+            >
+              <GraduationCap size={16} />
+            </button>
+          )}
+
+          {/* View, Edit, and Resolve Buttons for Instructors chatting with a student */}
+          {isInstructor && selectedUser.id !== 'global' && (
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: 'auto', marginRight: '8px' }}>
+              {activeStudent?.needsHelp && (
+                <button
+                  onClick={handleResolveHelp}
+                  disabled={helpRequesting}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: '1.5px solid var(--accent-green)',
+                    backgroundColor: 'transparent',
+                    color: 'var(--accent-green)',
+                    transition: 'all 0.15s ease',
+                    marginRight: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="Resolve help request, clear student flag, and exit workspace sharing"
+                >
+                  ✓ Resolve
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  const isCurrent = viewedStudentId === selectedUser.id && viewedStudentMode === 'view';
+                  setViewedStudentId(isCurrent ? null : selectedUser.id);
+                  setViewedStudentMode(isCurrent ? null : 'view');
+                }}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: '1.5px solid var(--accent-blue)',
+                  backgroundColor: (viewedStudentId === selectedUser.id && viewedStudentMode === 'view') ? 'var(--accent-blue)' : 'transparent',
+                  color: (viewedStudentId === selectedUser.id && viewedStudentMode === 'view') ? '#fff' : 'var(--accent-blue)',
+                  transition: 'all 0.15s ease'
+                }}
+                title={viewedStudentId === selectedUser.id && viewedStudentMode === 'view' ? "Stop Viewing" : "View student's live workspace"}
+              >
+                View
+              </button>
+              <button
+                onClick={() => {
+                  const isCurrent = viewedStudentId === selectedUser.id && viewedStudentMode === 'edit';
+                  setViewedStudentId(isCurrent ? null : selectedUser.id);
+                  setViewedStudentMode(isCurrent ? null : 'edit');
+                }}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: '1.5px solid var(--accent-purple)',
+                  backgroundColor: (viewedStudentId === selectedUser.id && viewedStudentMode === 'edit') ? 'var(--accent-purple)' : 'transparent',
+                  color: (viewedStudentId === selectedUser.id && viewedStudentMode === 'edit') ? '#fff' : 'var(--accent-purple)',
+                  transition: 'all 0.15s ease'
+                }}
+                title={viewedStudentId === selectedUser.id && viewedStudentMode === 'edit' ? "Stop Editing" : "Edit student's live workspace"}
+              >
+                Edit
+              </button>
+            </div>
+          )}
+
           {canClear && (
             <button
               className="icon-btn-small"
               onClick={handleClearChat}
               title="Clear chat"
-              style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}
+              style={{ 
+                marginLeft: (isInstructor && selectedUser.id !== 'global') || (!isInstructor && selectedUser.role === 'instructor') ? '0' : 'auto', 
+                color: 'var(--text-muted)' 
+              }}
             >
               <Trash2 size={15} />
             </button>
@@ -226,7 +391,7 @@ const ChatPanel = () => {
             const isGlobal = selectedUser.id === 'global';
             return (
               <div key={msg.id} className={`chat-bubble-wrapper ${isMe ? 'me' : 'them'}`}>
-                {!isMe && msg.senderAvatar && isGlobal && (
+                {!isMe && msg.senderAvatar && (
                   <img src={msg.senderAvatar} alt="" className="chat-bubble-avatar" />
                 )}
                 <div className="chat-bubble-content">
@@ -237,7 +402,7 @@ const ChatPanel = () => {
                     {msg.text}
                   </div>
                 </div>
-                {isMe && isGlobal && user.avatarUrl && (
+                {isMe && user.avatarUrl && (
                   <img src={user.avatarUrl} alt="" className="chat-bubble-avatar chat-bubble-avatar-right" />
                 )}
               </div>
@@ -293,10 +458,11 @@ const ChatPanel = () => {
         {users.map(u => {
           const dmId = getChatId(myUid, u.id);
           const hasUnread = unreadIds.has(dmId);
+          const needsHelp = (isInstructor && u.needsHelp) || (!isInstructor && myNeedsHelp && u.role === 'instructor');
           return (
             <div
               key={u.id}
-              className={`chat-user-row ${hasUnread ? 'unread' : ''}`}
+              className={`chat-user-row ${needsHelp ? 'needs-help' : hasUnread ? 'unread' : ''}`}
               onClick={() => openChat(u)}
             >
               <div className="chat-avatar-wrapper">
@@ -305,9 +471,12 @@ const ChatPanel = () => {
               </div>
               <div className="chat-user-info">
                 <span className="chat-user-name">{u.firstName} {u.lastName}</span>
-                <span className="chat-user-role">{u.role}</span>
+                <span className="chat-user-role">
+                  {needsHelp ? (isInstructor ? '🙋 Needs Help' : '🙋 Help Requested') : u.role}
+                </span>
               </div>
-              {hasUnread && <span className="unread-badge" />}
+              {needsHelp && <span className="help-badge" title={isInstructor ? "Student needs help" : "Help requested"} />}
+              {!needsHelp && hasUnread && <span className="unread-badge" />}
             </div>
           );
         })}

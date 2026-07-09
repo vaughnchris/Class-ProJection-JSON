@@ -10,34 +10,41 @@ const CodeEditor = ({ activeTab }) => {
     activeMode, 
     role, 
     isSharing,
-    studentLocalCode,
-    tabs,
-    setStudentLocalCode,
+    tabs: storeTabs,
     updateTabCode,
     fontSize
   } = useStore();
 
-  const isInstructor = role === 'instructor';
+  const viewedStudentId = useStore(state => state.viewedStudentId);
+  const viewedStudentTabs = useStore(state => state.viewedStudentTabs);
+  const viewedStudentMode = useStore(state => state.viewedStudentMode);
 
-  // Auto-initialize student's local workspace with instructor's code when sharing starts
-  useEffect(() => {
-    if (!isInstructor && isSharing && !studentLocalCode && instructorCode) {
-      setStudentLocalCode(instructorCode);
-    }
-  }, [isInstructor, isSharing, studentLocalCode, instructorCode, setStudentLocalCode]);
+  const instructorTabs = useStore(state => state.instructorTabs);
+  const instructorActiveTab = useStore(state => state.instructorActiveTab);
+
+  const isInstructor = role === 'instructor';
+  const showSharedLecture = !isInstructor && isSharing && activeMode === 'broadcast';
+
+  const tabs = viewedStudentId 
+    ? viewedStudentTabs 
+    : (showSharedLecture && instructorTabs && instructorTabs.length > 0 ? instructorTabs : storeTabs);
+
+
   
   // Read-only logic:
-  // - Instructor is never read-only.
+  // - Instructor is never read-only (unless viewing a student in 'view' mode).
   // - On the shared lecture workspace tab, student is read-only.
   // - Student's custom files/tabs are always editable.
-  const isReadOnly = !isInstructor && activeTab === 'instructor_code';
+  const isReadOnly = viewedStudentId 
+    ? (viewedStudentMode === 'view')
+    : (showSharedLecture || (!isInstructor && activeTab === 'instructor_code'));
   
   // Display code logic:
   // - Instructor sees the current active tab code.
   // - Student sees:
   //   - instructorCode if viewing 'instructor_code'.
   //   - tab.code if viewing any of their workspace files.
-  const currentCode = isInstructor 
+  const currentCode = (viewedStudentId || isInstructor || showSharedLecture)
     ? (tabs.find(t => t.id === activeTab)?.code || '')
     : (activeTab === 'instructor_code' 
         ? instructorCode 
@@ -205,10 +212,11 @@ const CodeEditor = ({ activeTab }) => {
   const activeTabObj = tabs.find(t => t.id === activeTab);
   const activeTabName = activeTabObj?.name || 'about';
   const isPythonTab = (name) => {
+    if (!name) return false;
     const ext = name.split('.').pop().toLowerCase();
     return ext === 'py'
       || activeTab === 'instructor_code'
-      || activeTab.startsWith('shared_');
+      || (activeTab && typeof activeTab === 'string' && activeTab.startsWith('shared_'));
   };
 
   const getEditorLanguage = (name) => {
