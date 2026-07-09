@@ -29,6 +29,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     closeTab,
     openTab,
     deleteTab,
+    clearAllCustomTabs,
     renameTab,
     setActiveTab,
     activityInstructions,
@@ -205,6 +206,20 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     setActivePanels(newPanels);
     if (newPanels.length === 0) {
       setIsOpen(false);
+    }
+  };
+
+  const handleDeleteAllFiles = () => {
+    if (viewedStudentId || showSharedLecture) return;
+
+    const deletableTabs = tabs.filter(t => t.id !== 'about');
+    if (deletableTabs.length === 0) {
+      alert("No files to delete.");
+      return;
+    }
+
+    if (window.confirm("Are you sure you want to delete all files in your explorer? This cannot be undone.")) {
+      clearAllCustomTabs();
     }
   };
 
@@ -423,6 +438,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                             </button>
                             <button 
                               className={`icon-btn-small ${isHoveringTrash ? 'trash-active' : ''}`}
+                              onClick={handleDeleteAllFiles}
                               onDragOver={(e) => e.preventDefault()}
                               onDragEnter={() => setIsHoveringTrash(true)}
                               onDragLeave={() => setIsHoveringTrash(false)}
@@ -442,7 +458,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                                 transform: isHoveringTrash ? 'scale(1.25)' : 'scale(1)',
                                 transition: 'all 0.15s ease'
                               }}
-                              title="Drag file here to delete permanently"
+                              title="Drag file here to delete, or click to delete all files"
                             >
                               <Trash2 size={15} />
                             </button>

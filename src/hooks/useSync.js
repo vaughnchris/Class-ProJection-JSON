@@ -107,11 +107,17 @@ export const useSync = () => {
           // If allowEdit transitions to true, create persistent editable shared tabs for all instructor tabs
           if (!isInstructor && !oldAllowEdit && newAllowEdit && data.instructorTabs) {
             const currentTabs = useStore.getState().tabs;
-            const newTabs = [...currentTabs];
+            const newTabs = currentTabs.map(t => ({ ...t }));
             let firstNewTabId = null;
 
             data.instructorTabs.forEach(instTab => {
               if (instTab.id === 'about') return;
+
+              const existingTab = newTabs.find(t => t.originalTabId === instTab.id);
+              if (existingTab) {
+                existingTab.code = instTab.code;
+                return;
+              }
 
               let targetName = instTab.name;
               let suffixCount = 1;
@@ -134,7 +140,8 @@ export const useSync = () => {
                 name: targetName,
                 code: instTab.code,
                 isCloseable: true,
-                isOpen: true
+                isOpen: true,
+                originalTabId: instTab.id
               });
             });
 
@@ -203,11 +210,17 @@ export const useSync = () => {
           // If transitioning from Broadcast to Execute, merge all instructor tabs into student workspace without overwriting
           if (oldMode === 'broadcast' && newMode === 'execute' && data.instructorTabs) {
             const currentTabs = useStore.getState().tabs;
-            const newTabs = [...currentTabs];
+            const newTabs = currentTabs.map(t => ({ ...t }));
             let firstNewTabId = null;
 
             data.instructorTabs.forEach(instTab => {
               if (instTab.id === 'about') return;
+
+              const existingTab = newTabs.find(t => t.originalTabId === instTab.id);
+              if (existingTab) {
+                existingTab.code = instTab.code;
+                return;
+              }
 
               let targetName = instTab.name;
               let suffixCount = 1;
@@ -230,7 +243,8 @@ export const useSync = () => {
                 name: targetName,
                 code: instTab.code,
                 isCloseable: true,
-                isOpen: true
+                isOpen: true,
+                originalTabId: instTab.id
               });
             });
 

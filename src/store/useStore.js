@@ -160,6 +160,15 @@ const useStore = create((set) => ({
       ...(isInstructor && activeTabObj ? { instructorCode: activeTabObj.code } : {})
     };
   }),
+  clearAllCustomTabs: () => set((state) => {
+    const newTabs = state.tabs.filter(t => t.id === 'about');
+    const isInstructor = state.role === 'instructor';
+    return {
+      tabs: newTabs,
+      activeTab: 'about',
+      ...(isInstructor ? { instructorCode: '' } : {})
+    };
+  }),
   renameTab: (id, name) => set((state) => ({
     tabs: state.tabs.map((t) => (t.id === id ? { ...t, name } : t))
   })),
