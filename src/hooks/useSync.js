@@ -57,7 +57,9 @@ export const useSync = () => {
         await setDoc(doc(db, `sessions/${sessionId}`), {
           instructorTabs: tabs,
           instructorActiveTab: activeTab,
-          instructorCode: activeTabObj?.code || ''
+          instructorCode: activeTabObj?.code || '',
+          instructorId: user.uid,
+          lastUpdatedAt: new Date().toISOString()
         }, { merge: true });
       } catch (err) {
         console.error("Error syncing instructor workspace state:", err);

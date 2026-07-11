@@ -544,8 +544,9 @@ function App() {
       const blob = new Blob([data], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
+      const dateString = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       link.href = url;
-      link.download = `room-${sessionId}-backup.json`;
+      link.download = `room-${sessionId}-backup-${dateString}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
