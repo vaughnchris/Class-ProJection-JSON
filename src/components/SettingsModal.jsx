@@ -138,12 +138,14 @@ const SettingsModal = ({ isOpen, onClose }) => {
               }
             }
 
-            // 2. Add to authorized_students collection if student
+            // 2. Add to authorized_students or authorized_instructors collection
             if (role === 'student') {
               const authRef = doc(db, 'authorized_students', email);
               await setDoc(authRef, { addedAt: new Date().toISOString(), avatarUrl }, { merge: true });
               studentsAdded++;
             } else {
+              const authRef = doc(db, 'authorized_instructors', email);
+              await setDoc(authRef, { addedAt: new Date().toISOString(), avatarUrl }, { merge: true });
               facultyAdded++;
             }
 

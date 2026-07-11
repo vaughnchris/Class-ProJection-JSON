@@ -91,6 +91,16 @@ const AuthModal = ({ isOpen, onClose }) => {
           console.warn('Could not verify roster, allowing login:', rosterErr);
           // If Firestore is unavailable, allow login to avoid lockout
         }
+      } else {
+        // For instructors: optionally fetch roster data to get their avatar URL
+        try {
+          const rosterDoc = await getDoc(doc(db, 'authorized_instructors', userEmail));
+          if (rosterDoc.exists()) {
+            rosterData = rosterDoc.data();
+          }
+        } catch (err) {
+          // Ignore, we don't block instructor logins if not on the list
+        }
       }
       
       // Check if they used the default password
