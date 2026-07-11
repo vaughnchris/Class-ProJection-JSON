@@ -61,7 +61,10 @@ pyodideReadyPromise = loadPyodideAndPackages();
 self.onmessage = async (event) => {
   const { id, python, isRepl, ...context } = event.data;
   
-  if (!python) return;
+  if (!python) {
+    self.postMessage({ type: 'done', id, isRepl });
+    return;
+  }
 
   currentMode = isRepl ? 'repl' : 'script';
 
