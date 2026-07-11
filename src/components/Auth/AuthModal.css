@@ -92,6 +92,8 @@
   font-size: 0.95rem;
   outline: none;
   transition: border-color 0.2s;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .form-group input:focus {

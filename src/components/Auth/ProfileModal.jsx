@@ -6,18 +6,14 @@ import { X, Check } from 'lucide-react';
 import './AuthModal.css'; // Reusing modal base styles
 import './ProfileModal.css';
 
-const AVATAR_SEEDS = [
-  'Felix', 'Aneka', 'Peanut', 'Lucky', 'Mittens', 
-  'Bella', 'Max', 'Luna', 'Charlie', 'Lucy',
-  'Milo', 'Daisy', 'Leo', 'Chloe', 'Oliver'
-];
+// Removed AVATAR_SEEDS as we now use custom URLs
 
 const ProfileModal = ({ isOpen, onClose }) => {
   const { user, setUser } = useStore();
   
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [avatarSeed, setAvatarSeed] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -26,15 +22,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
     if (user && isOpen) {
       setFirstName(user.firstName || '');
       setLastName(user.lastName || '');
-      
-      // Extract seed from current avatarUrl if possible
-      try {
-        const url = new URL(user.avatarUrl);
-        const seed = url.searchParams.get('seed');
-        if (seed) setAvatarSeed(seed);
-      } catch(e) {
-        setAvatarSeed('Felix');
-      }
+      setAvatarUrl(user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email || 'Felix'}`);
     }
   }, [user, isOpen]);
 
@@ -45,7 +33,7 @@ const ProfileModal = ({ isOpen, onClose }) => {
     setLoading(true);
     setError('');
 
-    const newAvatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`;
+    const newAvatarUrl = avatarUrl;
 
     try {
       const uid = auth.currentUser?.uid || user.uid;
@@ -109,19 +97,25 @@ const ProfileModal = ({ isOpen, onClose }) => {
           </div>
 
           <div className="form-group">
-            <label>Select Avatar</label>
-            <div className="avatar-grid">
-              {AVATAR_SEEDS.map(seed => (
-                <div 
-                  key={seed} 
-                  className={`avatar-option ${avatarSeed === seed ? 'selected' : ''}`}
-                  onClick={() => setAvatarSeed(seed)}
-                >
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`} alt={seed} />
-                  {avatarSeed === seed && <div className="avatar-check"><Check size={12} /></div>}
-                </div>
-              ))}
+            <label>Avatar URL</label>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <img 
+                src={avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=Felix`} 
+                alt="Avatar Preview" 
+                style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#334155', objectFit: 'cover' }} 
+                onError={(e) => { e.target.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix'; }}
+              />
+              <input 
+                type="text" 
+                value={avatarUrl} 
+                onChange={e => setAvatarUrl(e.target.value)} 
+                placeholder="https://..." 
+                style={{ flex: 1 }}
+              />
             </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', margin: 0 }}>
+              Enter a custom URL for your avatar image.
+            </p>
           </div>
 
           <button type="submit" className="btn btn-primary w-full" disabled={loading} style={{ marginTop: '16px' }}>
