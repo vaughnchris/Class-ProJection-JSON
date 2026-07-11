@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FileCode, Folder, FolderOpen, Search, Copy, CheckSquare, MessageCircle, Plus, GraduationCap, Trash2, FileText, Table, File, Users } from 'lucide-react';
+import { FileCode, Folder, FolderOpen, Search, Copy, CheckSquare, MessageCircle, Plus, GraduationCap, Trash2, FileText, Table, File, Users, Library } from 'lucide-react';
 import useStore from '../../store/useStore';
 import ChatPanel from './ChatPanel';
 import RosterPanel from './RosterPanel';
+import ModulesPanel from './ModulesPanel';
 import './Sidebar.css';
 import { Allotment } from 'allotment';
 import { db } from '../../firebase';
@@ -332,6 +333,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         return <RosterPanel />;
       case 'chat':
         return <ChatPanel />;
+      case 'modules':
+        return <ModulesPanel />;
       default:
         return (
           <div className="empty-panel">
@@ -375,6 +378,13 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           onClick={() => handleIconClick('testing')}
         >
           <CheckSquare size={24} />
+        </div>
+        <div 
+          className={`sidebar-icon ${activePanels.includes('modules') && isOpen ? 'active' : ''}`}
+          onClick={() => handleIconClick('modules')}
+          title="Pyodide Modules"
+        >
+          <Library size={24} />
         </div>
         <div 
           className={`sidebar-icon ${activePanels.includes('chat') && isOpen ? 'active' : ''} ${(!hasInstructorAccess && myNeedsHelp) ? 'needs-help-flash' : ''}`}

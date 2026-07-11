@@ -21,6 +21,7 @@ import ConsolePanel from './components/Console/ConsolePanel';
 import Sidebar from './components/Sidebar/Sidebar';
 import AuthModal from './components/Auth/AuthModal';
 import ProfileModal from './components/Auth/ProfileModal';
+import SettingsModal from './components/SettingsModal';
 import useStore from './store/useStore';
 import { useSync } from './hooks/useSync';
 import PyodideWorker from './utils/pyodide.worker.js?worker';
@@ -36,7 +37,10 @@ function App() {
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [swReady, setSwReady] = useState(false);
+  const [dragOverTabId, setDragOverTabId] = useState(null);
+  const [isDragOverEditor, setIsDragOverEditor] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('ide_is_sidebar_open', isSidebarOpen);
@@ -66,6 +70,7 @@ function App() {
     closeTab,
     openTab,
     renameTab,
+    updateTabCode,
     fontSize,
     increaseFontSize,
     decreaseFontSize
@@ -138,6 +143,56 @@ function App() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleImportModuleToTab = (tabId, moduleData) => {
+    if (tabId === 'about') {
+      alert("Imports can only be added to Python (.py) files.");
+      return;
+    }
+    const targetTab = tabs.find(t => t.id === tabId);
+    if (!targetTab) return;
+    
+    const name = targetTab.name || '';
+    const ext = name.split('.').pop().toLowerCase();
+    const isPython = ext === 'py' || tabId === 'instructor_code' || (tabId && typeof tabId === 'string' && tabId.startsWith('shared_'));
+    
+    if (!isPython) {
+      alert(`Cannot add import to non-Python file: "${name}"`);
+      return;
+    }
+
+    const isReadOnlyTab = viewedStudentId 
+      ? (viewedStudentMode === 'view')
+      : (showSharedLecture || (!isInstructor && tabId === 'instructor_code'));
+      
+    if (isReadOnlyTab) {
+      alert("This tab is read-only. You cannot insert imports here.");
+      return;
+    }
+
+    const currentCode = targetTab.code || '';
+    
+    // Check if already imported
+    const normalizedCode = currentCode.replace(/\s/g, '');
+    const normalizedImport = moduleData.importStmt.replace(/\s/g, '');
+    if (normalizedCode.includes(normalizedImport)) {
+      alert(`"${moduleData.name}" is already imported in this file.`);
+      return;
+    }
+
+    // Format import block
+    let importBlock = `${moduleData.importStmt}\n`;
+    if (moduleData.commonFunctions && moduleData.commonFunctions.length > 0) {
+      importBlock += `# Common functions:\n`;
+      moduleData.commonFunctions.forEach(f => {
+        importBlock += `# - ${f}\n`;
+      });
+    }
+    importBlock += `\n`;
+
+    const newCode = importBlock + currentCode;
+    updateTabCode(tabId, newCode);
   };
 
   const getFileIcon = (filename) => {
@@ -491,7 +546,9 @@ function App() {
         
         <div className="navbar-right">
           {(role === 'instructor' || role === 'admin') && (
-            <button className="icon-btn"><Settings size={18} /></button>
+            <button className="icon-btn" onClick={() => setIsSettingsModalOpen(true)}>
+              <Settings size={18} />
+            </button>
           )}
           
           {user ? (
@@ -545,11 +602,37 @@ function App() {
                       {tabs.filter(t => t.isOpen).map((tab) => (
                         <div 
                           key={tab.id}
-                          className={`tab ${activeTab === tab.id ? 'active' : ''} ${(viewedStudentId || showSharedLecture) ? 'shared-tab' : ''}`}
+                          className={`tab ${activeTab === tab.id ? 'active' : ''} ${(viewedStudentId || showSharedLecture) ? 'shared-tab' : ''} ${dragOverTabId === tab.id ? 'tab-drag-over' : ''}`}
                           onClick={() => !showSharedLecture && setActiveTab(tab.id)}
                           onDoubleClick={() => !showSharedLecture && handleRenameTab(tab.id, tab.name)}
                           style={{ cursor: 'pointer', position: 'relative', paddingRight: (tab.isCloseable && !showSharedLecture) ? '28px' : '16px', userSelect: 'none', display: 'flex', alignItems: 'center' }}
                           title={showSharedLecture ? "Shared Lecture File" : "Double-click to rename tab"}
+                          onDragOver={(e) => {
+                            if (e.dataTransfer.types.includes('application/json')) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onDragEnter={(e) => {
+                            if (e.dataTransfer.types.includes('application/json')) {
+                              setDragOverTabId(tab.id);
+                            }
+                          }}
+                          onDragLeave={() => {
+                            setDragOverTabId(null);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDragOverTabId(null);
+                            const dataStr = e.dataTransfer.getData('application/json');
+                            if (dataStr) {
+                              try {
+                                const moduleData = JSON.parse(dataStr);
+                                handleImportModuleToTab(tab.id, moduleData);
+                              } catch (err) {
+                                console.error("Error parsing dropped module:", err);
+                              }
+                            }
+                          }}
                         >
                           {getFileIcon(tab.name)}
                           <span style={{ marginLeft: '6px' }}>{tab.name}</span>
@@ -648,7 +731,35 @@ function App() {
                       </button>
                     </div>
                   </div>
-                  <div className="editor-wrapper">
+                  <div 
+                    className={`editor-wrapper ${isDragOverEditor ? 'editor-drag-over' : ''}`}
+                    onDragOver={(e) => {
+                      if (e.dataTransfer.types.includes('application/json')) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onDragEnter={(e) => {
+                      if (e.dataTransfer.types.includes('application/json')) {
+                        setIsDragOverEditor(true);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      setIsDragOverEditor(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragOverEditor(false);
+                      const dataStr = e.dataTransfer.getData('application/json');
+                      if (dataStr) {
+                        try {
+                          const moduleData = JSON.parse(dataStr);
+                          handleImportModuleToTab(activeTab, moduleData);
+                        } catch (err) {
+                          console.error("Error parsing dropped module:", err);
+                        }
+                      }
+                    }}
+                  >
                     <CodeEditor activeTab={activeTab} />
                   </div>
                 </div>
@@ -665,6 +776,7 @@ function App() {
       
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
       <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
+      <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} />
     </div>
   );
 }
