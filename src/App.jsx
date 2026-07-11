@@ -597,8 +597,9 @@ function App() {
           <button 
             className="btn btn-primary run-btn" 
             onClick={handleRun}
-            disabled={isExecuting || !swReady}
-            style={{ opacity: (isExecuting || !swReady) ? 0.7 : 1, cursor: (isExecuting || !swReady) ? 'not-allowed' : 'pointer' }}
+            disabled={isExecuting || !swReady || showSharedLecture}
+            style={{ opacity: (isExecuting || !swReady || showSharedLecture) ? 0.7 : 1, cursor: (isExecuting || !swReady || showSharedLecture) ? 'not-allowed' : 'pointer' }}
+            title={showSharedLecture ? "Instructor controls execution during broadcast" : ""}
           >
             <Play size={16} /> {isExecuting ? 'Running...' : (!swReady ? 'Initializing...' : 'Run')}
           </button>
