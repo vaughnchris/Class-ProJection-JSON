@@ -245,7 +245,7 @@ const RosterPanel = () => {
             {usersList.map(u => (
               <div key={u.id} style={{ display: 'flex', alignItems: 'center', padding: '7px 10px', borderBottom: '1px solid var(--border-color)', gap: '10px' }}>
                 <img 
-                  src={u.avatarUrl || \`https://api.dicebear.com/7.x/avataaars/svg?seed=\${u.email}\`} 
+                  src={u.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.email}`} 
                   alt="Avatar" 
                   style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#334155' }} 
                 />
