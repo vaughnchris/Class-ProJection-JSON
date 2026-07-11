@@ -21,7 +21,6 @@ import ConsolePanel from './components/Console/ConsolePanel';
 import Sidebar from './components/Sidebar/Sidebar';
 import AuthModal from './components/Auth/AuthModal';
 import ProfileModal from './components/Auth/ProfileModal';
-import SettingsModal from './components/SettingsModal';
 import SessionModal from './components/SessionModal';
 import useStore from './store/useStore';
 import { useSync } from './hooks/useSync';
@@ -38,7 +37,6 @@ function App() {
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
   const [swReady, setSwReady] = useState(false);
   const [dragOverTabId, setDragOverTabId] = useState(null);
@@ -564,12 +562,6 @@ function App() {
         </div>
         
         <div className="navbar-right">
-          {(role === 'instructor' || role === 'admin') && (
-            <button className="icon-btn" onClick={() => setIsSettingsModalOpen(true)}>
-              <Settings size={18} />
-            </button>
-          )}
-          
           {user ? (
             <div className="user-menu" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <span className="user-name" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 500 }}>
@@ -804,7 +796,6 @@ function App() {
       
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
       <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
-      <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} />
       <SessionModal isOpen={isSessionModalOpen} onClose={() => setIsSessionModalOpen(false)} />
     </div>
   );

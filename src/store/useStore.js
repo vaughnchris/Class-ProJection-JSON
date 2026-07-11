@@ -54,10 +54,6 @@ const useStore = create(
   isExecuting: false,
   isInteractiveExecuting: false,
 
-  // Settings
-  canvasToken: localStorage.getItem('ide_canvas_token') || '',
-  canvasDomain: localStorage.getItem('ide_canvas_domain') || 'yosemite.instructure.com',
-
   // Actions
   setUser: (userData) => set({ 
     user: userData,
@@ -112,15 +108,7 @@ const useStore = create(
   setActivityInstructions: (activityInstructions) => set({ activityInstructions }),
   setInstructorTabs: (instructorTabs) => set({ instructorTabs }),
   setInstructorActiveTab: (instructorActiveTab) => set({ instructorActiveTab }),
-  setCanvasToken: (canvasToken) => {
-    localStorage.setItem('ide_canvas_token', canvasToken);
-    set({ canvasToken });
-  },
-  setCanvasDomain: (canvasDomain) => {
-    localStorage.setItem('ide_canvas_domain', canvasDomain);
-    set({ canvasDomain });
-  },
-  
+
   // Font Size
   fontSize: Number(localStorage.getItem('ide_font_size')) || 14,
   increaseFontSize: () => set((state) => {
