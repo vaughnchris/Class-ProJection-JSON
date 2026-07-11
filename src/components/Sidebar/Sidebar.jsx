@@ -485,6 +485,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             className={`sidebar-icon ${activePanels.includes('roster') && isOpen ? 'active' : ''}`}
             onClick={() => handleIconClick('roster')}
             title="Student Roster"
+            style={{ marginTop: 'auto', marginBottom: '10px' }}
           >
             <Users size={24} />
           </div>
