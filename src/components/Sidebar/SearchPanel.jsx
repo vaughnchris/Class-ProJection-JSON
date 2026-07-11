@@ -23,13 +23,12 @@ const SearchPanel = () => {
   return (
     <div className="search-panel">
       <div className="search-header">
-        <h2><BookOpen size={18} color="var(--accent-primary)" /> Python Reference</h2>
         <div className="search-input-container">
           <Search size={16} />
           <input 
             type="text" 
             className="search-input"
-            placeholder="Search functions, syntax, concepts..."
+            placeholder="Search Python Reference..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
