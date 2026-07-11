@@ -27,6 +27,7 @@ export const useSync = () => {
     setInstructorTabs,
     setInstructorActiveTab,
     setStudentFeatures,
+    setLastExecuteSignal,
     sessionId
   } = useStore();
 
@@ -99,6 +100,11 @@ export const useSync = () => {
         // Sync student features
         if (data.studentFeatures) {
           setStudentFeatures(data.studentFeatures);
+        }
+
+        // Sync execute signal
+        if (data.lastExecuteSignal && data.lastExecuteSignal !== useStore.getState().lastExecuteSignal) {
+          setLastExecuteSignal(data.lastExecuteSignal);
         }
 
         // Sync allowEdit state

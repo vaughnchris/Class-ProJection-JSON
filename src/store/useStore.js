@@ -28,6 +28,7 @@ const useStore = create(
     modules: true,
     chat: true,
   },
+  lastExecuteSignal: null,
   
   // Instructor State
   instructorCode: 'print("Welcome to Class Projection!")',
@@ -129,6 +130,7 @@ const useStore = create(
   setInstructorTabs: (instructorTabs) => set({ instructorTabs }),
   setInstructorActiveTab: (instructorActiveTab) => set({ instructorActiveTab }),
   setStudentFeatures: (features) => set({ studentFeatures: features }),
+  setLastExecuteSignal: (signal) => set({ lastExecuteSignal: signal }),
 
   // Font Size
   fontSize: Number(localStorage.getItem('ide_font_size')) || 14,

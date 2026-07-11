@@ -81,7 +81,9 @@ function App() {
     increaseFontSize,
     decreaseFontSize,
     sessionId,
-    leaveSession
+    leaveSession,
+    updateSession,
+    lastExecuteSignal
   } = useStore();
 
   const viewedStudentId = useStore(state => state.viewedStudentId);
@@ -488,7 +490,20 @@ function App() {
       isRepl: false,
       files: filesToMount
     });
+
+    if (role === 'instructor' && sessionId && isSharing) {
+      updateSession({ lastExecuteSignal: Date.now() });
+    }
   };
+
+  const prevExecuteSignal = useRef(lastExecuteSignal);
+  useEffect(() => {
+    if (role !== 'instructor' && lastExecuteSignal && lastExecuteSignal !== prevExecuteSignal.current) {
+      prevExecuteSignal.current = lastExecuteSignal;
+      handleRun();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastExecuteSignal, role]);
 
   const handleRunInteractive = (code) => {
     if (!workerRef.current) return;
