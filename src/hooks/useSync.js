@@ -188,15 +188,23 @@ export const useSync = () => {
     return () => unsubscribe();
   }, [user, setIsSharing, setAllowEdit, setActiveMode, addTab, setActiveTab, isInstructor, setInstructorTabs, setInstructorActiveTab, sessionId]);
 
-  // Student-Only: Focus the shared lecture tab when sharing starts
+  // Student-Only: Focus the shared lecture tab when sharing starts, and fallback when it ends
+  const prevSharingRef = useRef(isSharing);
   useEffect(() => {
     if (isInstructor || !user) return;
-    if (isSharing) {
+    if (isSharing && !prevSharingRef.current) {
       const currentInstructorActiveTab = useStore.getState().instructorActiveTab;
       if (currentInstructorActiveTab) {
         setActiveTab(currentInstructorActiveTab);
       }
+    } else if (!isSharing && prevSharingRef.current) {
+      // Sharing just stopped. Check if activeTab is valid in storeTabs
+      const { tabs, activeTab } = useStore.getState();
+      if (!tabs.some(t => t.id === activeTab)) {
+        setActiveTab('about');
+      }
     }
+    prevSharingRef.current = isSharing;
   }, [isSharing, isInstructor, user, setActiveTab]);
 
   // Student-Only: Listen to code updates
@@ -214,56 +222,7 @@ export const useSync = () => {
 
         // Handle Mode Changes
         if (data.activeMode !== undefined) {
-          const newMode = data.activeMode;
-          const oldMode = prevModeRef.current;
-          prevModeRef.current = newMode;
-
-          // If transitioning from Broadcast to Execute, merge all instructor tabs into student workspace without overwriting
-          if (oldMode === 'broadcast' && newMode === 'execute' && data.instructorTabs) {
-            const currentTabs = useStore.getState().tabs;
-            const newTabs = currentTabs.map(t => ({ ...t }));
-            let firstNewTabId = null;
-
-            data.instructorTabs.forEach(instTab => {
-              if (instTab.id === 'about') return;
-
-              const existingTab = newTabs.find(t => t.originalTabId === instTab.id);
-              if (existingTab) {
-                existingTab.code = instTab.code;
-                return;
-              }
-
-              let targetName = instTab.name;
-              let suffixCount = 1;
-              while (newTabs.some(t => t.name === targetName)) {
-                const parts = instTab.name.split('.');
-                if (parts.length > 1) {
-                  const ext = parts.pop();
-                  targetName = `${parts.join('.')}_${suffixCount}.${ext}`;
-                } else {
-                  targetName = `${instTab.name}_${suffixCount}`;
-                }
-                suffixCount++;
-              }
-
-              const newTabId = 'shared_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-              if (!firstNewTabId) firstNewTabId = newTabId;
-
-              newTabs.push({
-                id: newTabId,
-                name: targetName,
-                code: instTab.code,
-                isCloseable: true,
-                isOpen: true,
-                originalTabId: instTab.id
-              });
-            });
-
-            useStore.setState({ 
-              tabs: newTabs, 
-              activeTab: firstNewTabId || useStore.getState().activeTab 
-            });
-          }
+          prevModeRef.current = data.activeMode;
         }
       }
     }, (err) => {
