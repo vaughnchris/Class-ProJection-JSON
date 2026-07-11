@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Users, Trash2, CheckCircle, AlertCircle, X, PlusCircle, GraduationCap } from 'lucide-react';
+import { Upload, Users, Trash2, CheckCircle, AlertCircle, X, PlusCircle, Shield } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, doc, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
 
 const RosterPanel = () => {
-  const [activeTab, setActiveTab] = useState('students'); // 'students' | 'instructors'
   const [usersList, setUsersList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -13,7 +12,7 @@ const RosterPanel = () => {
   const [manualAvatarUrl, setManualAvatarUrl] = useState('');
   const fileInputRef = useRef(null);
 
-  const collectionName = activeTab === 'students' ? 'authorized_students' : 'authorized_instructors';
+  const collectionName = 'authorized_students';
 
   // Load existing roster from Firestore
   const fetchRoster = async () => {
@@ -33,8 +32,7 @@ const RosterPanel = () => {
 
   useEffect(() => {
     fetchRoster();
-    setStatus(null);
-  }, [activeTab]);
+  }, []);
 
   // Parse CSV/TSV lines into { email, avatarUrl } objects
   const parseUsers = (text) => {
@@ -77,8 +75,7 @@ const RosterPanel = () => {
         batch.set(ref, data, { merge: true });
       });
       await batch.commit();
-      const roleName = activeTab === 'students' ? 'student' : 'instructor';
-      setStatus({ type: 'success', message: `✓ Added ${usersToUpload.length} ${roleName}(s).` });
+      setStatus({ type: 'success', message: `✓ Added ${usersToUpload.length} authorized user(s).` });
       fetchRoster();
     } catch (err) {
       console.error('Roster upload error:', err);
@@ -141,33 +138,10 @@ const RosterPanel = () => {
   return (
     <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px', height: '100%', overflowY: 'auto' }}>
       
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-light)', marginBottom: '4px' }}>
-        <button
-          onClick={() => setActiveTab('students')}
-          style={{
-            flex: 1, background: 'none', border: 'none', padding: '8px 4px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
-            borderBottom: activeTab === 'students' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-            color: activeTab === 'students' ? 'var(--text-primary)' : 'var(--text-muted)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><Users size={16} /> Students</div>
-        </button>
-        <button
-          onClick={() => setActiveTab('instructors')}
-          style={{
-            flex: 1, background: 'none', border: 'none', padding: '8px 4px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
-            borderBottom: activeTab === 'instructors' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-            color: activeTab === 'instructors' ? 'var(--text-primary)' : 'var(--text-muted)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><GraduationCap size={16} /> Instructors</div>
-        </button>
-      </div>
-
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <Shield size={16} style={{ color: 'var(--accent-primary)' }} />
         <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-          {activeTab === 'students' ? 'Student Roster' : 'Instructor List'}
+          Authorized Users
         </span>
         <span style={{
           marginLeft: 'auto', background: 'var(--bg-tertiary)', borderRadius: '999px', padding: '1px 8px', fontSize: '0.75rem', color: 'var(--text-secondary)'
@@ -175,7 +149,7 @@ const RosterPanel = () => {
       </div>
 
       <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-        Upload a CSV/spreadsheet with emails and avatar URLs to authorize {activeTab} for login.
+        Upload a CSV/spreadsheet with emails and avatar URLs to authorize users for login. Any user not on this list will be blocked.
       </p>
 
       {/* Upload CSV Button */}
@@ -219,7 +193,7 @@ const RosterPanel = () => {
           onClick={handleAddManual}
           disabled={!manualEmail.trim()}
         >
-          <PlusCircle size={14} /> Add {activeTab === 'students' ? 'Student' : 'Instructor'}
+          <PlusCircle size={14} /> Add Authorized User
         </button>
       </div>
 
@@ -238,23 +212,33 @@ const RosterPanel = () => {
           <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem', padding: '16px' }}>Loading...</p>
         ) : usersList.length === 0 ? (
           <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem', padding: '16px' }}>
-            No {activeTab} authorized yet.
+            No users authorized yet.
           </p>
         ) : (
           <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
-            {usersList.map(u => (
-              <div key={u.id} style={{ display: 'flex', alignItems: 'center', padding: '7px 10px', borderBottom: '1px solid var(--border-color)', gap: '10px' }}>
-                <img 
-                  src={u.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.email}`} 
-                  alt="Avatar" 
-                  style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#334155' }} 
-                />
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', flex: 1, wordBreak: 'break-all' }}>{u.email}</span>
-                <button onClick={() => handleRemove(u.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px', borderRadius: '4px', display: 'flex' }} title="Remove">
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            ))}
+            {usersList.map(u => {
+              const domain = (u.email || '').split('@')[1];
+              const isInst = domain === 'yosemite.edu';
+              
+              return (
+                <div key={u.id} style={{ display: 'flex', alignItems: 'center', padding: '7px 10px', borderBottom: '1px solid var(--border-color)', gap: '10px' }}>
+                  <img 
+                    src={u.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.email}`} 
+                    alt="Avatar" 
+                    style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#334155' }} 
+                  />
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', wordBreak: 'break-all' }}>{u.email}</span>
+                    <span style={{ fontSize: '0.65rem', color: isInst ? 'var(--accent-purple)' : 'var(--text-muted)' }}>
+                      {isInst ? 'Instructor' : 'Student'}
+                    </span>
+                  </div>
+                  <button onClick={() => handleRemove(u.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px', borderRadius: '4px', display: 'flex' }} title="Remove">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -265,12 +249,12 @@ const RosterPanel = () => {
           style={{ width: '100%', fontSize: '0.78rem', gap: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', borderColor: '#f87171' }}
           onClick={handleClearAll}
         >
-          <Trash2 size={13} /> Clear All {activeTab}
+          <Trash2 size={13} /> Clear All Users
         </button>
       )}
 
       <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
-        <strong>CSV format:</strong> Include emails and optionally avatar URLs in any column.
+        <strong>CSV format:</strong> Include emails and optionally avatar URLs in any column. Roles are determined automatically by domain (<code>@yosemite.edu</code>).
       </p>
     </div>
   );

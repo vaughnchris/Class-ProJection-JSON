@@ -75,32 +75,20 @@ const AuthModal = ({ isOpen, onClose }) => {
       const isInstructor = domain === 'yosemite.edu';
       const isStudent = domain === 'my.yosemite.edu' || !isInstructor;
 
-      // For students: verify they are on the authorized roster
+      // Verify they are on the authorized roster
       let rosterData = null;
-      if (isStudent) {
-        try {
-          const rosterDoc = await getDoc(doc(db, 'authorized_students', userEmail));
-          if (!rosterDoc.exists()) {
-            await signOut(auth);
-            setError('Your email is not on the authorized student list. Please contact your instructor.');
-            setLoading(false);
-            return;
-          }
-          rosterData = rosterDoc.data();
-        } catch (rosterErr) {
-          console.warn('Could not verify roster, allowing login:', rosterErr);
-          // If Firestore is unavailable, allow login to avoid lockout
+      try {
+        const rosterDoc = await getDoc(doc(db, 'authorized_students', userEmail));
+        if (!rosterDoc.exists()) {
+          await signOut(auth);
+          setError('Your email is not on the authorized list. Please contact your administrator.');
+          setLoading(false);
+          return;
         }
-      } else {
-        // For instructors: optionally fetch roster data to get their avatar URL
-        try {
-          const rosterDoc = await getDoc(doc(db, 'authorized_instructors', userEmail));
-          if (rosterDoc.exists()) {
-            rosterData = rosterDoc.data();
-          }
-        } catch (err) {
-          // Ignore, we don't block instructor logins if not on the list
-        }
+        rosterData = rosterDoc.data();
+      } catch (rosterErr) {
+        console.warn('Could not verify roster, allowing login:', rosterErr);
+        // If Firestore is unavailable, allow login to avoid lockout
       }
       
       // Check if they used the default password
