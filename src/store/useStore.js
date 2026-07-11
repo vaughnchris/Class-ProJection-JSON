@@ -95,7 +95,8 @@ const useStore = create((set) => ({
       }
     ],
     activeTab: 'about'
-  })),
+    }));
+  },
   setActiveMode: (mode) => set({ activeMode: mode }),
   setIsSharing: (isSharing) => set({ isSharing }),
   setAllowEdit: (allowEdit) => set({ allowEdit }),
