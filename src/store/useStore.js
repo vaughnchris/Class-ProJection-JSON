@@ -1,9 +1,12 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { db } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 
-const useStore = create((set) => ({
-  // User Profile
+const useStore = create(
+  persist(
+    (set) => ({
+      // User Profile
   user: null, // Initial state should be null if not logged in
   
   // Backwards compatibility for easy role checking
@@ -272,6 +275,23 @@ const useStore = create((set) => ({
     ...state,
     ...data
   }))
-}));
+    }),
+    {
+      name: 'ide-workspace-storage',
+      partialize: (state) => ({
+        tabs: state.tabs,
+        activeTab: state.activeTab,
+        instructorCode: state.instructorCode,
+        studentLocalCode: state.studentLocalCode,
+        activeMode: state.activeMode,
+        isSharing: state.isSharing,
+        allowEdit: state.allowEdit,
+        activityInstructions: state.activityInstructions,
+        instructorTabs: state.instructorTabs,
+        instructorActiveTab: state.instructorActiveTab
+      }),
+    }
+  )
+);
 
 export default useStore;
