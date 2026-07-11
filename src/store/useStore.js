@@ -20,6 +20,14 @@ const useStore = create(
   isSharing: false,
   allowEdit: false,
   isSessionSyncing: false,
+  studentFeatures: {
+    files: true,
+    search: true,
+    instructions: true,
+    testing: true,
+    modules: true,
+    chat: true,
+  },
   
   // Instructor State
   instructorCode: 'print("Welcome to Class Projection!")',
@@ -120,6 +128,7 @@ const useStore = create(
   setActivityInstructions: (activityInstructions) => set({ activityInstructions }),
   setInstructorTabs: (instructorTabs) => set({ instructorTabs }),
   setInstructorActiveTab: (instructorActiveTab) => set({ instructorActiveTab }),
+  setStudentFeatures: (features) => set({ studentFeatures: features }),
 
   // Font Size
   fontSize: Number(localStorage.getItem('ide_font_size')) || 14,

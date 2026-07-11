@@ -26,6 +26,7 @@ export const useSync = () => {
     setActivityInstructions,
     setInstructorTabs,
     setInstructorActiveTab,
+    setStudentFeatures,
     sessionId
   } = useStore();
 
@@ -93,6 +94,11 @@ export const useSync = () => {
         // Sync sharing state
         if (data.isSharing !== undefined) {
           setIsSharing(data.isSharing);
+        }
+        
+        // Sync student features
+        if (data.studentFeatures) {
+          setStudentFeatures(data.studentFeatures);
         }
 
         // Sync allowEdit state

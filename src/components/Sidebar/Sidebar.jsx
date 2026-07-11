@@ -24,6 +24,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     allowEdit, 
     isSessionSyncing, 
     updateSession,
+    studentFeatures,
     tabs: storeTabs,
     activeTab: storeActiveTab,
     addTab,
@@ -340,6 +341,31 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 {allowEdit ? 'Edit Allowed' : 'Allow Edit'}
               </button>
             </div>
+
+            <div style={{ marginTop: '12px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+              <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '12px' }}>
+                Student Features
+              </span>
+              {['files', 'search', 'instructions', 'testing', 'modules', 'chat'].map(feature => (
+                <label key={feature} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                  <span style={{ textTransform: 'capitalize' }}>{feature}</span>
+                  <input 
+                    type="checkbox" 
+                    checked={studentFeatures?.[feature] ?? true}
+                    onChange={(e) => {
+                      updateSession({ 
+                        studentFeatures: { 
+                          ...(studentFeatures || { files: true, search: true, instructions: true, testing: true, modules: true, chat: true }), 
+                          [feature]: e.target.checked 
+                        } 
+                      });
+                    }}
+                    disabled={isSessionSyncing}
+                    style={{ accentColor: 'var(--accent-primary)' }}
+                  />
+                </label>
+              ))}
+            </div>
           </div>
         );
       case 'roster':
@@ -362,52 +388,72 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     if (panel === 'instructor' || panel === 'roster') {
       return hasInstructorAccess;
     }
+    if (!hasInstructorAccess) {
+      if (panel === 'explorer' && studentFeatures?.files === false) return false;
+      if (panel === 'search' && studentFeatures?.search === false) return false;
+      if (panel === 'instructions' && studentFeatures?.instructions === false) return false;
+      if (panel === 'testing' && studentFeatures?.testing === false) return false;
+      if (panel === 'modules' && studentFeatures?.modules === false) return false;
+      if (panel === 'chat' && studentFeatures?.chat === false) return false;
+    }
     return true;
   });
 
   return (
     <div className="sidebar">
       <div className="sidebar-icons">
-        <div 
-          className={`sidebar-icon ${activePanels.includes('explorer') && isOpen ? 'active' : ''}`}
-          onClick={() => handleIconClick('explorer')}
-        >
-          <FileCode size={24} />
-        </div>
-        <div 
-          className={`sidebar-icon ${activePanels.includes('search') && isOpen ? 'active' : ''}`}
-          onClick={() => handleIconClick('search')}
-        >
-          <Search size={24} />
-        </div>
-        <div 
-          className={`sidebar-icon ${activePanels.includes('instructions') && isOpen ? 'active' : ''}`}
-          onClick={() => handleIconClick('instructions')}
-          title="Activity Instructions"
-        >
-          <FileText size={24} />
-        </div>
-        <div 
-          className={`sidebar-icon ${activePanels.includes('testing') && isOpen ? 'active' : ''}`}
-          onClick={() => handleIconClick('testing')}
-        >
-          <CheckSquare size={24} />
-        </div>
-        <div 
-          className={`sidebar-icon ${activePanels.includes('modules') && isOpen ? 'active' : ''}`}
-          onClick={() => handleIconClick('modules')}
-          title="Pyodide Modules"
-        >
-          <Library size={24} />
-        </div>
-        <div 
-          className={`sidebar-icon ${activePanels.includes('chat') && isOpen ? 'active' : ''} ${(!hasInstructorAccess && myNeedsHelp) ? 'needs-help-flash' : ''}`}
-          onClick={() => handleIconClick('chat')}
-          title="Chat"
-        >
-          <MessageCircle size={24} />
-          {(!hasInstructorAccess && myNeedsHelp) && <span className="sidebar-help-badge" />}
-        </div>
+        {(hasInstructorAccess || studentFeatures?.files !== false) && (
+          <div 
+            className={`sidebar-icon ${activePanels.includes('explorer') && isOpen ? 'active' : ''}`}
+            onClick={() => handleIconClick('explorer')}
+          >
+            <FileCode size={24} />
+          </div>
+        )}
+        {(hasInstructorAccess || studentFeatures?.search !== false) && (
+          <div 
+            className={`sidebar-icon ${activePanels.includes('search') && isOpen ? 'active' : ''}`}
+            onClick={() => handleIconClick('search')}
+          >
+            <Search size={24} />
+          </div>
+        )}
+        {(hasInstructorAccess || studentFeatures?.instructions !== false) && (
+          <div 
+            className={`sidebar-icon ${activePanels.includes('instructions') && isOpen ? 'active' : ''}`}
+            onClick={() => handleIconClick('instructions')}
+            title="Activity Instructions"
+          >
+            <FileText size={24} />
+          </div>
+        )}
+        {(hasInstructorAccess || studentFeatures?.testing !== false) && (
+          <div 
+            className={`sidebar-icon ${activePanels.includes('testing') && isOpen ? 'active' : ''}`}
+            onClick={() => handleIconClick('testing')}
+          >
+            <CheckSquare size={24} />
+          </div>
+        )}
+        {(hasInstructorAccess || studentFeatures?.modules !== false) && (
+          <div 
+            className={`sidebar-icon ${activePanels.includes('modules') && isOpen ? 'active' : ''}`}
+            onClick={() => handleIconClick('modules')}
+            title="Pyodide Modules"
+          >
+            <Library size={24} />
+          </div>
+        )}
+        {(hasInstructorAccess || studentFeatures?.chat !== false) && (
+          <div 
+            className={`sidebar-icon ${activePanels.includes('chat') && isOpen ? 'active' : ''} ${(!hasInstructorAccess && myNeedsHelp) ? 'needs-help-flash' : ''}`}
+            onClick={() => handleIconClick('chat')}
+            title="Chat"
+          >
+            <MessageCircle size={24} />
+            {(!hasInstructorAccess && myNeedsHelp) && <span className="sidebar-help-badge" />}
+          </div>
+        )}
         {hasInstructorAccess && (
           <div 
             className={`sidebar-icon ${activePanels.includes('instructor') && isOpen ? 'active' : ''}`}
