@@ -67,6 +67,26 @@ const useStore = create((set) => ({
   setUserName: (userName) => set({ userName }),
   
   setSessionId: (sessionId) => set({ sessionId }),
+  leaveSession: () => set((state) => ({
+    sessionId: null,
+    isSharing: false,
+    allowEdit: false,
+    instructorTabs: [],
+    instructorActiveTab: null,
+    viewedStudentId: null,
+    viewedStudentTabs: [],
+    viewedStudentActiveTab: null,
+    tabs: [
+      { 
+        id: 'about', 
+        name: 'About', 
+        code: '', 
+        isCloseable: true,
+        isOpen: true
+      }
+    ],
+    activeTab: 'about'
+  })),
   setActiveMode: (mode) => set({ activeMode: mode }),
   setIsSharing: (isSharing) => set({ isSharing }),
   setAllowEdit: (allowEdit) => set({ allowEdit }),
@@ -226,7 +246,10 @@ const useStore = create((set) => ({
   updateSession: async (fields) => {
     set({ isSessionSyncing: true });
     try {
-      await setDoc(doc(db, 'sessions/main_classroom'), fields, { merge: true });
+      const currentSessionId = useStore.getState().sessionId;
+      if (currentSessionId) {
+        await setDoc(doc(db, `sessions/${currentSessionId}`), fields, { merge: true });
+      }
     } catch (err) {
       console.error("Error updating session in Firebase:", err);
     } finally {

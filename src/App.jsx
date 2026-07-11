@@ -22,6 +22,7 @@ import Sidebar from './components/Sidebar/Sidebar';
 import AuthModal from './components/Auth/AuthModal';
 import ProfileModal from './components/Auth/ProfileModal';
 import SettingsModal from './components/SettingsModal';
+import SessionModal from './components/SessionModal';
 import useStore from './store/useStore';
 import { useSync } from './hooks/useSync';
 import PyodideWorker from './utils/pyodide.worker.js?worker';
@@ -38,6 +39,7 @@ function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
   const [swReady, setSwReady] = useState(false);
   const [dragOverTabId, setDragOverTabId] = useState(null);
   const [isDragOverEditor, setIsDragOverEditor] = useState(false);
@@ -73,7 +75,9 @@ function App() {
     updateTabCode,
     fontSize,
     increaseFontSize,
-    decreaseFontSize
+    decreaseFontSize,
+    sessionId,
+    leaveSession
   } = useStore();
 
   const viewedStudentId = useStore(state => state.viewedStudentId);
@@ -97,6 +101,13 @@ function App() {
 
   // Initialize Real-time synchronization
   useSync();
+
+  // Prompt for session if logged in but no session
+  useEffect(() => {
+    if (user && !sessionId) {
+      setIsSessionModalOpen(true);
+    }
+  }, [user, sessionId]);
 
   const getActiveTabCode = () => {
     const isInstructor = role === 'instructor';
@@ -536,6 +547,14 @@ function App() {
           >
             <Play size={16} /> {isExecuting ? 'Running...' : (!swReady ? 'Initializing...' : 'Run')}
           </button>
+          
+          {sessionId && (
+            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'var(--bg-tertiary)', padding: '4px 12px', borderRadius: '20px', margin: '0 16px', border: '1px solid var(--border-light)' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginRight: '6px' }}>Room:</span>
+              <span style={{ fontWeight: 600, letterSpacing: '1px', color: 'var(--accent-primary)', fontSize: '0.9rem' }}>{sessionId}</span>
+            </div>
+          )}
+          
           <button className="btn btn-secondary ai-btn">
             <Sparkles size={16} /> AI Check
           </button>
@@ -562,6 +581,15 @@ function App() {
                 onClick={() => setIsProfileModalOpen(true)}
                 style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#334155', cursor: 'pointer' }} 
               />
+              {sessionId ? (
+                <button className="btn btn-outline" onClick={leaveSession} style={{ padding: '4px 10px', fontSize: '0.8rem' }}>
+                  Leave Room
+                </button>
+              ) : (
+                <button className="btn btn-primary" onClick={() => setIsSessionModalOpen(true)} style={{ padding: '4px 10px', fontSize: '0.8rem' }}>
+                  {role === 'instructor' ? 'Start Session' : 'Join Session'}
+                </button>
+              )}
               <button className="btn btn-outline signin-btn" onClick={handleSignOut}>
                 Sign Out
               </button>
@@ -777,6 +805,7 @@ function App() {
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
       <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
       <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} />
+      <SessionModal isOpen={isSessionModalOpen} onClose={() => setIsSessionModalOpen(false)} />
     </div>
   );
 }

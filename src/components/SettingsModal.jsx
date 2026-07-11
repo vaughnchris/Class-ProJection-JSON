@@ -125,6 +125,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
           const nameParts = user.name ? user.name.split(' ') : ['Student'];
           const firstName = nameParts[0];
           const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+          const avatarUrl = user.avatar_url || '';
 
           try {
             // 1. Try to create user in Firebase Auth using the secondary app
@@ -140,7 +141,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
             // 2. Add to authorized_students collection if student
             if (role === 'student') {
               const authRef = doc(db, 'authorized_students', email);
-              await setDoc(authRef, { addedAt: new Date().toISOString() }, { merge: true });
+              await setDoc(authRef, { addedAt: new Date().toISOString(), avatarUrl }, { merge: true });
               studentsAdded++;
             } else {
               facultyAdded++;

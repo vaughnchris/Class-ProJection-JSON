@@ -3,8 +3,6 @@ import { doc, onSnapshot, setDoc, updateDoc, serverTimestamp } from 'firebase/fi
 import { db } from '../firebase';
 import useStore from '../store/useStore';
 
-const SESSION_DOC = 'sessions/main_classroom';
-
 export const useSync = () => {
   const { 
     user, 
@@ -27,7 +25,8 @@ export const useSync = () => {
     activityInstructions,
     setActivityInstructions,
     setInstructorTabs,
-    setInstructorActiveTab
+    setInstructorActiveTab,
+    sessionId
   } = useStore();
 
   const isInstructor = role === 'instructor';
@@ -42,7 +41,7 @@ export const useSync = () => {
 
   // Instructor: Sync Code (Debounced to protect database writes)
   useEffect(() => {
-    if (!user || !isInstructor) return;
+    if (!user || !isInstructor || !sessionId) return;
 
     // Clear previous timer
     if (debounceTimerRef.current) {
@@ -52,7 +51,7 @@ export const useSync = () => {
     debounceTimerRef.current = setTimeout(async () => {
       try {
         const activeTabObj = tabs.find(t => t.id === activeTab);
-        await setDoc(doc(db, SESSION_DOC), {
+        await setDoc(doc(db, `sessions/${sessionId}`), {
           instructorTabs: tabs,
           instructorActiveTab: activeTab,
           instructorCode: activeTabObj?.code || ''
@@ -63,15 +62,15 @@ export const useSync = () => {
     }, 500); // 500ms debounce for keystrokes
 
     return () => clearTimeout(debounceTimerRef.current);
-  }, [tabs, activeTab, isInstructor, user]);
+  }, [tabs, activeTab, isInstructor, user, sessionId]);
 
   // Instructor: Sync activityInstructions to Firestore (Debounced)
   useEffect(() => {
-    if (!user || !isInstructor) return;
+    if (!user || !isInstructor || !sessionId) return;
 
     const timer = setTimeout(async () => {
       try {
-        await setDoc(doc(db, SESSION_DOC), {
+        await setDoc(doc(db, `sessions/${sessionId}`), {
           activityInstructions
         }, { merge: true });
       } catch (err) {
@@ -80,14 +79,14 @@ export const useSync = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [activityInstructions, isInstructor, user]);
+  }, [activityInstructions, isInstructor, user, sessionId]);
 
 
   // Both: Listen to control state changes from Firestore (Single source of truth for controls)
   useEffect(() => {
-    if (!user) return;
+    if (!user || !sessionId) return;
 
-    const unsubscribe = onSnapshot(doc(db, SESSION_DOC), (snapshot) => {
+    const unsubscribe = onSnapshot(doc(db, `sessions/${sessionId}`), (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         
@@ -175,7 +174,7 @@ export const useSync = () => {
     });
 
     return () => unsubscribe();
-  }, [user, setIsSharing, setAllowEdit, setActiveMode, addTab, setActiveTab, isInstructor, setInstructorTabs, setInstructorActiveTab]);
+  }, [user, setIsSharing, setAllowEdit, setActiveMode, addTab, setActiveTab, isInstructor, setInstructorTabs, setInstructorActiveTab, sessionId]);
 
   // Student-Only: Focus the shared lecture tab when sharing starts
   useEffect(() => {
@@ -190,9 +189,9 @@ export const useSync = () => {
 
   // Student-Only: Listen to code updates
   useEffect(() => {
-    if (!user || isInstructor) return;
+    if (!user || isInstructor || !sessionId) return;
 
-    const unsubscribe = onSnapshot(doc(db, SESSION_DOC), (snapshot) => {
+    const unsubscribe = onSnapshot(doc(db, `sessions/${sessionId}`), (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         
@@ -260,7 +259,7 @@ export const useSync = () => {
     });
 
     return () => unsubscribe();
-  }, [isInstructor, user, setInstructorCode]);
+  }, [isInstructor, user, setInstructorCode, sessionId]);
 
   // Student-Only: Sync workspace/tabs to Firestore user doc
   useEffect(() => {

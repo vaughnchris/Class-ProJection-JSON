@@ -19,7 +19,7 @@ const AuthModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
   
-  const initializeOrGetUser = async (firebaseUser) => {
+  const initializeOrGetUser = async (firebaseUser, rosterData = null) => {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     const userDoc = await getDoc(userDocRef);
     
@@ -55,7 +55,7 @@ const AuthModal = ({ isOpen, onClose }) => {
       email: emailStr,
       firstName: firstName,
       lastName: '',
-      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${emailStr}`,
+      avatarUrl: (rosterData && rosterData.avatarUrl) ? rosterData.avatarUrl : `https://api.dicebear.com/7.x/avataaars/svg?seed=${emailStr}`,
       role: assignedRole
     };
     
@@ -76,6 +76,7 @@ const AuthModal = ({ isOpen, onClose }) => {
       const isStudent = domain === 'my.yosemite.edu' || !isInstructor;
 
       // For students: verify they are on the authorized roster
+      let rosterData = null;
       if (isStudent) {
         try {
           const rosterDoc = await getDoc(doc(db, 'authorized_students', userEmail));
@@ -85,6 +86,7 @@ const AuthModal = ({ isOpen, onClose }) => {
             setLoading(false);
             return;
           }
+          rosterData = rosterDoc.data();
         } catch (rosterErr) {
           console.warn('Could not verify roster, allowing login:', rosterErr);
           // If Firestore is unavailable, allow login to avoid lockout
@@ -100,7 +102,7 @@ const AuthModal = ({ isOpen, onClose }) => {
       
       // Fetch or create user role/profile from Firestore
       try {
-        const userData = await initializeOrGetUser(userCredential.user);
+        const userData = await initializeOrGetUser(userCredential.user, rosterData);
         setUser({ ...userData, uid: userCredential.user.uid });
       } catch (err) {
          console.warn("Firestore error, falling back to mock user:", err);
