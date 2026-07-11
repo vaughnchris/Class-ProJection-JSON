@@ -13,7 +13,6 @@ const TestingPanel = () => {
   const [questions, setQuestions] = useState([]); // Instructor's parsed questions
   const [activeQuestion, setActiveQuestion] = useState(null); // The currently broadcasted question
   const [responses, setResponses] = useState({}); // Student responses map
-  const [myResponse, setMyResponse] = useState(null); // The current student's response
 
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
@@ -35,20 +34,12 @@ const TestingPanel = () => {
       }
     });
 
-    // Listen to testResponses subcollection
-    const responsesRef = collection(db, 'sessions', sessionId, 'testResponses');
     const unsubResponses = onSnapshot(responsesRef, (snapshot) => {
       const currentResponses = {};
       snapshot.forEach(docSnap => {
         currentResponses[docSnap.id] = docSnap.data();
       });
       setResponses(currentResponses);
-
-      if (!isInstructor && user && currentResponses[user.uid]) {
-        setMyResponse(currentResponses[user.uid]);
-      } else {
-        setMyResponse(null);
-      }
     });
 
     return () => {
@@ -84,16 +75,7 @@ const TestingPanel = () => {
   const handleBroadcast = async (question) => {
     if (!sessionId) return;
     
-    // Clear old responses first
     try {
-      const responsesRef = collection(db, 'sessions', sessionId, 'testResponses');
-      const snap = await getDocs(responsesRef);
-      const batch = writeBatch(db);
-      snap.forEach(docSnap => {
-        batch.delete(docSnap.ref);
-      });
-      await batch.commit();
-
       // Broadcast new question
       const sessionRef = doc(db, 'sessions', sessionId);
       await updateDoc(sessionRef, {
@@ -119,12 +101,15 @@ const TestingPanel = () => {
 
   // 5. Student: Submit Answer
   const handleSubmitAnswer = async (choiceId) => {
-    if (isInstructor || !sessionId || !user || myResponse || !activeQuestion) return;
+    const myCurrentResponse = activeQuestion ? Object.values(responses).find(r => r.userId === user?.uid && r.questionId === activeQuestion.id) : null;
+    if (isInstructor || !sessionId || !user || myCurrentResponse || !activeQuestion) return;
 
     const isCorrect = choiceId === activeQuestion.correctId;
     try {
-      const responseRef = doc(db, 'sessions', sessionId, 'testResponses', user.uid);
+      const responseRef = doc(db, 'sessions', sessionId, 'testResponses', `${activeQuestion.id}_${user.uid}`);
       await setDoc(responseRef, {
+        questionId: activeQuestion.id,
+        userId: user.uid,
         choiceId,
         isCorrect,
         timestamp: new Date().toISOString()
@@ -137,14 +122,15 @@ const TestingPanel = () => {
   // --- Render Helpers ---
 
   const renderStatistics = (question) => {
-    const totalResponses = Object.keys(responses).length;
+    const questionResponses = Object.values(responses).filter(r => r.questionId === question.id);
+    const totalResponses = questionResponses.length;
     if (totalResponses === 0) return <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No responses yet.</div>;
 
     return (
       <div className="testing-stats">
         <h4 style={{ fontSize: '0.9rem', marginBottom: '8px' }}>Class Results ({totalResponses} total)</h4>
         {question.choices.map(choice => {
-          const count = Object.values(responses).filter(r => r.choiceId === choice.id).length;
+          const count = questionResponses.filter(r => r.choiceId === choice.id).length;
           const percentage = totalResponses > 0 ? (count / totalResponses) * 100 : 0;
           const isCorrectChoice = choice.id === question.correctId;
           
@@ -173,6 +159,8 @@ const TestingPanel = () => {
   const renderActiveQuestion = () => {
     if (!activeQuestion) return null;
 
+    const myCurrentResponse = Object.values(responses).find(r => r.userId === user?.uid && r.questionId === activeQuestion.id);
+
     return (
       <div className="testing-active-question">
         <h3 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -197,10 +185,10 @@ const TestingPanel = () => {
                else choiceClass += " disabled";
             } else {
                // Student view
-               if (myResponse) {
+               if (myCurrentResponse) {
                  choiceClass += " disabled";
                  if (choice.id === activeQuestion.correctId) choiceClass += " correct";
-                 else if (myResponse.choiceId === choice.id) choiceClass += " incorrect";
+                 else if (myCurrentResponse.choiceId === choice.id) choiceClass += " incorrect";
                }
             }
 
@@ -210,8 +198,8 @@ const TestingPanel = () => {
                 className={choiceClass}
                 onClick={() => handleSubmitAnswer(choice.id)}
               >
-                {!isInstructor && myResponse && choice.id === activeQuestion.correctId && <CheckCircle2 size={16} color="#22c55e" />}
-                {!isInstructor && myResponse && myResponse.choiceId === choice.id && myResponse.choiceId !== activeQuestion.correctId && <XCircle size={16} color="#ef4444" />}
+                {!isInstructor && myCurrentResponse && choice.id === activeQuestion.correctId && <CheckCircle2 size={16} color="#22c55e" />}
+                {!isInstructor && myCurrentResponse && myCurrentResponse.choiceId === choice.id && myCurrentResponse.choiceId !== activeQuestion.correctId && <XCircle size={16} color="#ef4444" />}
                 
                 <span dangerouslySetInnerHTML={{ __html: choice.textHtml }} />
               </div>
@@ -219,7 +207,7 @@ const TestingPanel = () => {
           })}
         </div>
 
-        {(isInstructor || myResponse) && renderStatistics(activeQuestion)}
+        {(isInstructor || myCurrentResponse) && renderStatistics(activeQuestion)}
       </div>
     );
   };
@@ -228,8 +216,23 @@ const TestingPanel = () => {
   // --- Main Render ---
   return (
     <div className="testing-panel">
-      <div className="testing-header">
-        <h2><CheckSquare size={18} color="var(--accent-primary)" /> Testing & Quizzes</h2>
+      <div className="testing-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <CheckSquare size={18} color="var(--accent-primary)" /> 
+          {activeQuestion ? (
+            <div style={{ fontSize: '0.85rem' }}>
+              <strong>Current:</strong> {Object.values(responses).filter(r => r.questionId === activeQuestion.id && r.isCorrect).length} Correct / {Object.values(responses).filter(r => r.questionId === activeQuestion.id).length} Answers
+            </div>
+          ) : (
+            <div style={{ fontSize: '0.85rem' }}>No Active Question</div>
+          )}
+        </div>
+        
+        {!isInstructor && user && (
+          <div style={{ fontSize: '0.85rem', textAlign: 'right' }}>
+            <strong>My Total:</strong> {Object.values(responses).filter(r => r.userId === user.uid && r.isCorrect).length} / {Object.values(responses).filter(r => r.userId === user.uid).length}
+          </div>
+        )}
       </div>
 
       <div className="testing-content">
