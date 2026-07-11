@@ -96,6 +96,18 @@ const useStore = create(
     activeTab: 'about'
     }));
   },
+  resetWorkspace: () => set({
+    tabs: [
+      { 
+        id: 'about', 
+        name: 'About', 
+        code: '', 
+        isCloseable: true,
+        isOpen: true
+      }
+    ],
+    activeTab: 'about'
+  }),
   setActiveMode: (mode) => set({ activeMode: mode }),
   setIsSharing: (isSharing) => set({ isSharing }),
   setAllowEdit: (allowEdit) => set({ allowEdit }),

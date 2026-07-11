@@ -25,6 +25,7 @@ import SessionModal from './components/SessionModal';
 import LeaveRoomModal from './components/LeaveRoomModal';
 import useStore from './store/useStore';
 import { useSync } from './hooks/useSync';
+import { useWorkspaceSync } from './hooks/useWorkspaceSync';
 import PyodideWorker from './utils/pyodide.worker.js?worker';
 import { auth, db } from './firebase';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
@@ -43,6 +44,9 @@ function App() {
   const [swReady, setSwReady] = useState(false);
   const [dragOverTabId, setDragOverTabId] = useState(null);
   const [isDragOverEditor, setIsDragOverEditor] = useState(false);
+
+  // Initialize sync hooks
+  useWorkspaceSync();
 
   useEffect(() => {
     localStorage.setItem('ide_is_sidebar_open', isSidebarOpen);
@@ -405,7 +409,16 @@ function App() {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
-            setUser({ ...userDoc.data(), uid: firebaseUser.uid });
+            const data = userDoc.data();
+            setUser({ ...data, uid: firebaseUser.uid });
+            
+            // Hydrate cloud workspace if it exists
+            if (data.workspace && data.workspace.tabs) {
+              useStore.getState().syncFromFirebase({
+                tabs: data.workspace.tabs,
+                activeTab: data.workspace.activeTab || data.workspace.tabs[0].id
+              });
+            }
           }
         } catch (err) {
           console.warn("Could not restore user session data:", err);
@@ -502,6 +515,8 @@ function App() {
       }
       await signOut(auth);
       setUser(null);
+      // Reset local workspace so the next user doesn't see the previous user's files
+      useStore.getState().resetWorkspace();
     } catch (err) {
       console.error('Error signing out', err);
     }
