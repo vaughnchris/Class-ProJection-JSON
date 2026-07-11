@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileCode, Folder, FolderOpen, Search, Copy, CheckSquare, MessageCircle, Plus, GraduationCap, Trash2, FileText, Table, File, Users, Library } from 'lucide-react';
+import { FileCode, Folder, FolderOpen, Search, Copy, CheckSquare, MessageCircle, Plus, GraduationCap, Trash2, FileText, Table, File, Users, Library, Lock } from 'lucide-react';
 import useStore from '../../store/useStore';
 import ChatPanel from './ChatPanel';
 import RosterPanel from './RosterPanel';

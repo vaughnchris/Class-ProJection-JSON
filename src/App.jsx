@@ -12,9 +12,9 @@ import {
   ChevronDown,
   Download,
   FileCode,
-  FileText,
   Table,
-  File
+  File,
+  Lock
 } from 'lucide-react';
 import CodeEditor from './components/Editor/CodeEditor';
 import ConsolePanel from './components/Console/ConsolePanel';
