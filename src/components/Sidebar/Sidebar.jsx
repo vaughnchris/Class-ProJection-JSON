@@ -273,9 +273,23 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         if (!hasInstructorAccess) return null;
         return (
           <div className="instructor-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', boxSizing: 'border-box' }}>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-              Instructor Controls
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {user?.avatarUrl && (
+                <img 
+                  src={user.avatarUrl} 
+                  alt="Instructor Avatar" 
+                  style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#334155', border: '2px solid var(--accent-primary)' }} 
+                />
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ color: 'var(--text-primary)', fontSize: '0.95rem', fontWeight: 600 }}>
+                  Instructor Controls
+                </span>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '2px' }}>
+                  {user?.firstName} {user?.lastName}
+                </span>
+              </div>
+            </div>
             {activeMode === 'broadcast' ? (
               <button 
                 className="btn btn-primary" 
