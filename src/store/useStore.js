@@ -12,7 +12,7 @@ const useStore = create((set) => ({
   userName: null,
 
   // Session Data
-  sessionId: null,
+  sessionId: localStorage.getItem('ide_session_id') || null,
   activeMode: 'broadcast', // 'independent' | 'broadcast' | 'execute'
   isSharing: false,
   allowEdit: false,
@@ -66,9 +66,18 @@ const useStore = create((set) => ({
   setUserId: (userId) => set({ userId }),
   setUserName: (userName) => set({ userName }),
   
-  setSessionId: (sessionId) => set({ sessionId }),
-  leaveSession: () => set((state) => ({
-    sessionId: null,
+  setSessionId: (sessionId) => {
+    if (sessionId) {
+      localStorage.setItem('ide_session_id', sessionId);
+    } else {
+      localStorage.removeItem('ide_session_id');
+    }
+    set({ sessionId });
+  },
+  leaveSession: () => {
+    localStorage.removeItem('ide_session_id');
+    set((state) => ({
+      sessionId: null,
     isSharing: false,
     allowEdit: false,
     instructorTabs: [],
