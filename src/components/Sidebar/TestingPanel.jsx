@@ -34,6 +34,7 @@ const TestingPanel = () => {
       }
     });
 
+    const responsesRef = collection(db, 'sessions', sessionId, 'testResponses');
     const unsubResponses = onSnapshot(responsesRef, (snapshot) => {
       const currentResponses = {};
       snapshot.forEach(docSnap => {
