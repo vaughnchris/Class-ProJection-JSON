@@ -4,6 +4,7 @@ import useStore from '../../store/useStore';
 import ChatPanel from './ChatPanel';
 import RosterPanel from './RosterPanel';
 import ModulesPanel from './ModulesPanel';
+import SearchPanel from './SearchPanel';
 import './Sidebar.css';
 import { Allotment } from 'allotment';
 import { db } from '../../firebase';
@@ -263,6 +264,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             ))}
           </div>
         );
+      case 'search':
+        return <SearchPanel />;
       case 'instructions':
         return (
           <InstructionsPanel 
