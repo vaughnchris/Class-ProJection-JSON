@@ -160,7 +160,7 @@ const TestingPanel = () => {
               <div className="stat-bar-container">
                 <div 
                   className={`stat-bar ${isCorrectChoice ? 'correct' : ''}`} 
-                  style={{ width: \`\${percentage}%\` }} 
+                  style={{ width: `${percentage}%` }} 
                 />
               </div>
             </div>
