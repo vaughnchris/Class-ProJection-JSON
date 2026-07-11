@@ -22,12 +22,13 @@ import Sidebar from './components/Sidebar/Sidebar';
 import AuthModal from './components/Auth/AuthModal';
 import ProfileModal from './components/Auth/ProfileModal';
 import SessionModal from './components/SessionModal';
+import LeaveRoomModal from './components/LeaveRoomModal';
 import useStore from './store/useStore';
 import { useSync } from './hooks/useSync';
 import PyodideWorker from './utils/pyodide.worker.js?worker';
 import { auth, db } from './firebase';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import './App.css';
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [swReady, setSwReady] = useState(false);
   const [dragOverTabId, setDragOverTabId] = useState(null);
   const [isDragOverEditor, setIsDragOverEditor] = useState(false);
@@ -505,6 +507,31 @@ function App() {
     }
   };
 
+  const handleCloseRoom = async (saveBackup) => {
+    if (saveBackup && storeTabs) {
+      const data = JSON.stringify(storeTabs, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `room-${sessionId}-backup.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+    
+    try {
+      if (sessionId) {
+        await deleteDoc(doc(db, 'sessions', sessionId));
+      }
+    } catch(err) {
+      console.error('Error deleting session:', err);
+    }
+    
+    leaveSession();
+  };
+
   return (
     <div className="app-container">
       {/* Top Navbar */}
@@ -574,7 +601,7 @@ function App() {
                 style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#334155', cursor: 'pointer' }} 
               />
               {sessionId ? (
-                <button className="btn btn-outline" onClick={leaveSession} style={{ padding: '4px 10px', fontSize: '0.8rem' }}>
+                <button className="btn btn-outline" onClick={() => setIsLeaveModalOpen(true)} style={{ padding: '4px 10px', fontSize: '0.8rem' }}>
                   Leave Room
                 </button>
               ) : (
@@ -797,6 +824,13 @@ function App() {
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
       <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
       <SessionModal isOpen={isSessionModalOpen} onClose={() => setIsSessionModalOpen(false)} />
+      <LeaveRoomModal 
+        isOpen={isLeaveModalOpen} 
+        onClose={() => setIsLeaveModalOpen(false)} 
+        onLeave={leaveSession}
+        onCloseRoom={handleCloseRoom}
+        role={role}
+      />
     </div>
   );
 }
