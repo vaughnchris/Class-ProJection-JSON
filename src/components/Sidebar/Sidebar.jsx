@@ -5,6 +5,7 @@ import ChatPanel from './ChatPanel';
 import RosterPanel from './RosterPanel';
 import ModulesPanel from './ModulesPanel';
 import SearchPanel from './SearchPanel';
+import TestingPanel from './TestingPanel';
 import './Sidebar.css';
 import { Allotment } from 'allotment';
 import { db } from '../../firebase';
@@ -388,6 +389,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </div>
           </div>
         );
+      case 'testing':
+        return <TestingPanel />;
       case 'roster':
         if (!hasInstructorAccess) return null;
         return <RosterPanel />;
