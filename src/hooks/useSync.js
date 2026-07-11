@@ -28,6 +28,7 @@ export const useSync = () => {
     setInstructorActiveTab,
     setStudentFeatures,
     setLastExecuteSignal,
+    setLockStudentActivity,
     sessionId
   } = useStore();
 
@@ -100,6 +101,10 @@ export const useSync = () => {
         // Sync student features
         if (data.studentFeatures) {
           setStudentFeatures(data.studentFeatures);
+        }
+
+        if (data.lockStudentActivity !== undefined) {
+          setLockStudentActivity(data.lockStudentActivity);
         }
 
         // Sync execute signal
@@ -197,6 +202,7 @@ export const useSync = () => {
       if (currentInstructorActiveTab) {
         setActiveTab(currentInstructorActiveTab);
       }
+      useStore.getState().clearConsole();
     } else if (!isSharing && prevSharingRef.current) {
       // Sharing just stopped. Check if activeTab is valid in storeTabs
       const { tabs, activeTab } = useStore.getState();

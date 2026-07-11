@@ -41,6 +41,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const viewedStudentId = useStore(state => state.viewedStudentId);
   const viewedStudentTabs = useStore(state => state.viewedStudentTabs);
   const viewedStudentActiveTab = useStore(state => state.viewedStudentActiveTab);
+  const lockStudentActivity = useStore(state => state.lockStudentActivity);
 
   const role = useStore(state => state.role);
   const instructorTabs = useStore(state => state.instructorTabs);
@@ -344,6 +345,22 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
             <div style={{ marginTop: '12px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
               <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '12px' }}>
+                Activity Lock
+              </span>
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Lock size={14} color={lockStudentActivity ? 'var(--accent-primary)' : 'currentColor'} /> 
+                  Lock Student IDE
+                </span>
+                <input 
+                  type="checkbox" 
+                  checked={lockStudentActivity}
+                  onChange={(e) => updateSession({ lockStudentActivity: e.target.checked })}
+                  style={{ accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                />
+              </label>
+              
+              <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '12px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
                 Student Features
               </span>
               {['files', 'search', 'instructions', 'testing', 'modules', 'chat'].map(feature => (

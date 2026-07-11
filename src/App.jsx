@@ -83,7 +83,8 @@ function App() {
     sessionId,
     leaveSession,
     updateSession,
-    lastExecuteSignal
+    lastExecuteSignal,
+    lockStudentActivity
   } = useStore();
 
   const viewedStudentId = useStore(state => state.viewedStudentId);
@@ -597,9 +598,9 @@ function App() {
           <button 
             className="btn btn-primary run-btn" 
             onClick={handleRun}
-            disabled={isExecuting || !swReady || showSharedLecture}
-            style={{ opacity: (isExecuting || !swReady || showSharedLecture) ? 0.7 : 1, cursor: (isExecuting || !swReady || showSharedLecture) ? 'not-allowed' : 'pointer' }}
-            title={showSharedLecture ? "Instructor controls execution during broadcast" : ""}
+            disabled={isExecuting || !swReady || showSharedLecture || (!isInstructor && lockStudentActivity)}
+            style={{ opacity: (isExecuting || !swReady || showSharedLecture || (!isInstructor && lockStudentActivity)) ? 0.7 : 1, cursor: (isExecuting || !swReady || showSharedLecture || (!isInstructor && lockStudentActivity)) ? 'not-allowed' : 'pointer' }}
+            title={showSharedLecture ? "Instructor controls execution during broadcast" : (!isInstructor && lockStudentActivity ? "Instructor has locked student activity" : "")}
           >
             <Play size={16} /> {isExecuting ? 'Running...' : (!swReady ? 'Initializing...' : 'Run')}
           </button>
@@ -653,7 +654,25 @@ function App() {
       </header>
 
       {/* Main Content with Split Panes */}
-      <div className="main-workspace">
+      <div className="main-workspace" style={{ position: 'relative' }}>
+        {!isInstructor && lockStudentActivity && (
+          <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.85)',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(4px)',
+            color: 'var(--text-primary)'
+          }}>
+            <Lock size={64} color="var(--accent-primary)" style={{ marginBottom: '24px' }} />
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 600, letterSpacing: '-0.02em', marginBottom: '12px' }}>Activity Locked</h2>
+            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>The instructor has temporarily paused student activity for a lecture.</p>
+          </div>
+        )}
         <Allotment onChange={handleHorizontalResize}>
           {/* Left Sidebar */}
           <Allotment.Pane 

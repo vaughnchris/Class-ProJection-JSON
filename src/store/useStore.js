@@ -19,6 +19,7 @@ const useStore = create(
   activeMode: 'broadcast', // 'independent' | 'broadcast' | 'execute'
   isSharing: false,
   allowEdit: false,
+  lockStudentActivity: false,
   isSessionSyncing: false,
   studentFeatures: {
     files: true,
@@ -120,6 +121,7 @@ const useStore = create(
   setActiveMode: (mode) => set({ activeMode: mode }),
   setIsSharing: (isSharing) => set({ isSharing }),
   setAllowEdit: (allowEdit) => set({ allowEdit }),
+  setLockStudentActivity: (lock) => set({ lockStudentActivity: lock }),
   setSessionSyncing: (isSessionSyncing) => set({ isSessionSyncing }),
   setSelectedChatUser: (selectedChatUser) => set({ selectedChatUser }),
   setViewedStudentId: (viewedStudentId) => set({ viewedStudentId }),
