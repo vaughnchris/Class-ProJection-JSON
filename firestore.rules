@@ -32,6 +32,11 @@ service cloud.firestore {
       allow write: if isInstructor();
     }
 
+    match /sessions/{sessionId}/testResponses/{responseId} {
+      allow read: if isSignedIn();
+      allow write: if isInstructor() || (isSignedIn() && request.auth.uid == request.resource.data.userId);
+    }
+
     // Legacy path fallback (keep for safety)
     match /classroom/{document=**} {
       allow read: if isSignedIn();
