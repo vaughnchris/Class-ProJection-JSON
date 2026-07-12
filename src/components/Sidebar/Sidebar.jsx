@@ -1,23 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { FileCode, Folder, FolderOpen, Search, Copy, CheckSquare, MessageCircle, Plus, GraduationCap, Trash2, FileText, Table, File, Users, Library, Lock } from 'lucide-react';
+import { Search, FileCode, Users, FileText, X, Pin, Library, MessageCircle, Monitor, Upload, Play, CheckSquare, GraduationCap, Keyboard, Plus, Trash2, Lock, Folder, FolderOpen, Copy, Table, File, Download, Upload as UploadIcon } from 'lucide-react';
 import useStore from '../../store/useStore';
 import ChatPanel from './ChatPanel';
 import RosterPanel from './RosterPanel';
 import ModulesPanel from './ModulesPanel';
 import SearchPanel from './SearchPanel';
+import PresentationPanel from './PresentationPanel';
 import TestingPanel from './TestingPanel';
+import HelpPanel from './HelpPanel';
 import './Sidebar.css';
 import { Allotment } from 'allotment';
 import { db } from '../../firebase';
 import { collection, query, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { exportLecturePackage, importLecturePackage } from '../../utils/lecturePackageUtils';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const [activePanels, setActivePanels] = useState(() => {
     const saved = localStorage.getItem('ide_active_panels');
     return saved ? JSON.parse(saved) : ['explorer'];
   });
+  const [maximizedPanel, setMaximizedPanel] = useState(null);
   const [isHoveringTrash, setIsHoveringTrash] = useState(false);
   const [myNeedsHelp, setMyNeedsHelp] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [packageProgress, setPackageProgress] = useState('');
   
   const { 
     user, 
@@ -37,7 +44,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     renameTab,
     setActiveTab,
     activityInstructions,
-    setActivityInstructions
+    setActivityInstructions,
+    sessionId,
+    setTabs
   } = useStore();
 
   const viewedStudentId = useStore(state => state.viewedStudentId);
@@ -182,36 +191,44 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
   const handleIconClick = (panel) => {
     if (!isOpen) {
-      // If closed, open it and ensure the clicked panel is active
-      if (!activePanels.includes(panel)) {
-        setActivePanels([...activePanels, panel]);
-      } else if (activePanels.length === 0) {
-        setActivePanels([panel]);
-      }
       setIsOpen(true);
+      setMaximizedPanel(panel);
     } else {
-      // If open, toggle the panel
-      let newPanels;
-      if (activePanels.includes(panel)) {
-        newPanels = activePanels.filter(p => p !== panel);
+      if (maximizedPanel === panel) {
+        // Close flyout
+        setMaximizedPanel(null);
+        if (activePanels.length === 0) setIsOpen(false);
       } else {
-        newPanels = [...activePanels, panel];
+        // Switch to this panel as flyout
+        setMaximizedPanel(panel);
       }
+    }
+  };
+
+  const isPanelActive = (panel) => {
+    if (!isOpen) return false;
+    if (maximizedPanel) return maximizedPanel === panel;
+    return activePanels.includes(panel);
+  };
+
+  const handleClosePanel = (panel) => {
+    if (maximizedPanel === panel) {
+      setMaximizedPanel(null);
+      if (activePanels.length === 0) setIsOpen(false);
+    } else {
+      const newPanels = activePanels.filter(p => p !== panel);
       setActivePanels(newPanels);
-      
-      // If no panels left, close the sidebar
-      if (newPanels.length === 0) {
+      if (newPanels.length === 0 && !maximizedPanel) {
         setIsOpen(false);
       }
     }
   };
 
-  const handleClosePanel = (panel) => {
-    const newPanels = activePanels.filter(p => p !== panel);
-    setActivePanels(newPanels);
-    if (newPanels.length === 0) {
-      setIsOpen(false);
+  const handlePinPanel = (panel) => {
+    if (!activePanels.includes(panel)) {
+      setActivePanels([...activePanels, panel]);
     }
+    setMaximizedPanel(null);
   };
 
   const handleDeleteAllFiles = () => {
@@ -240,6 +257,45 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       setActivePanels(['explorer']);
     }
   }, [isOpen, activePanels]);
+
+  const handleExportLecture = async () => {
+    if (!sessionId) {
+      alert("Please start a session before exporting a lecture package.");
+      return;
+    }
+    setIsExporting(true);
+    setPackageProgress('Starting export...');
+    try {
+      await exportLecturePackage(sessionId, tabs, setPackageProgress);
+    } catch (err) {
+      alert("Failed to export lecture: " + err.message);
+    }
+    setIsExporting(false);
+    setPackageProgress('');
+  };
+
+  const handleImportLecture = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!sessionId) {
+      alert("Please start a session before importing a lecture package. The session is required to store your quiz questions.");
+      e.target.value = null;
+      return;
+    }
+
+    setIsImporting(true);
+    setPackageProgress('Starting import...');
+    try {
+      await importLecturePackage(file, sessionId, setTabs, setPackageProgress);
+      alert("Lecture package imported successfully!");
+    } catch (err) {
+      alert("Failed to import lecture: " + err.message);
+    }
+    setIsImporting(false);
+    setPackageProgress('');
+    e.target.value = null; // reset input
+  };
 
   const renderPanelContent = (panel) => {
     switch(panel) {
@@ -349,25 +405,61 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
             <div style={{ marginTop: '12px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
               <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '12px' }}>
+                Lecture Packages
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button 
+                  className="btn btn-outline" 
+                  style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '8px' }}
+                  onClick={handleExportLecture}
+                  disabled={isExporting || isImporting}
+                >
+                  <Download size={14} />
+                  {isExporting ? 'Exporting...' : 'Export Session to .zip'}
+                </button>
+                
+                <label className="btn btn-outline" style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '8px', cursor: (isExporting || isImporting) ? 'default' : 'pointer', opacity: (isExporting || isImporting) ? 0.5 : 1, textAlign: 'center', margin: 0 }}>
+                  <UploadIcon size={14} />
+                  {isImporting ? 'Importing...' : 'Import Session from .zip'}
+                  <input 
+                    type="file" 
+                    accept=".zip" 
+                    onChange={handleImportLecture} 
+                    style={{ display: 'none' }} 
+                    disabled={isExporting || isImporting}
+                  />
+                </label>
+                {packageProgress && (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '4px' }}>
+                    {packageProgress}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginTop: '12px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+              <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '12px' }}>
                 Activity Lock
               </span>
               <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Lock size={14} color={lockStudentActivity ? 'var(--accent-primary)' : 'currentColor'} /> 
                   Lock Student IDE
                 </span>
-                <input 
-                  type="checkbox" 
-                  checked={lockStudentActivity}
-                  onChange={(e) => updateSession({ lockStudentActivity: e.target.checked })}
-                  style={{ accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={lockStudentActivity}
+                    onChange={(e) => updateSession({ lockStudentActivity: e.target.checked })}
+                    style={{ accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                  />
+                  <Lock size={20} color={lockStudentActivity ? '#22c55e' : 'var(--border-light)'} /> 
+                </div>
               </label>
               
               <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '12px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
                 Student Features
               </span>
-              {['files', 'search', 'instructions', 'testing', 'modules', 'chat'].map(feature => (
+              {['files', 'search', 'instructions', 'testing', 'modules', 'chat', 'presentations'].map(feature => (
                 <label key={feature} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                   <span style={{ textTransform: 'capitalize' }}>{feature}</span>
                   <input 
@@ -376,7 +468,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     onChange={(e) => {
                       updateSession({ 
                         studentFeatures: { 
-                          ...(studentFeatures || { files: true, search: true, instructions: true, testing: true, modules: true, chat: true }), 
+                          ...(studentFeatures || { files: true, search: true, instructions: true, testing: true, modules: true, chat: true, presentations: true }), 
                           [feature]: e.target.checked 
                         } 
                       });
@@ -389,6 +481,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </div>
           </div>
         );
+      case 'presentations':
+        return <PresentationPanel />;
       case 'testing':
         return <TestingPanel />;
       case 'roster':
@@ -398,6 +492,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         return <ChatPanel />;
       case 'modules':
         return <ModulesPanel />;
+      case 'help':
+        return <HelpPanel />;
       default:
         return (
           <div className="empty-panel">
@@ -417,7 +513,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       if (panel === 'instructions' && studentFeatures?.instructions === false) return false;
       if (panel === 'testing' && studentFeatures?.testing === false) return false;
       if (panel === 'modules' && studentFeatures?.modules === false) return false;
+      if (panel === 'modules' && studentFeatures?.modules === false) return false;
       if (panel === 'chat' && studentFeatures?.chat === false) return false;
+      if (panel === 'presentations' && studentFeatures?.presentations === false) return false;
     }
     return true;
   });
@@ -427,7 +525,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       <div className="sidebar-icons">
         {(hasInstructorAccess || studentFeatures?.files !== false) && (
           <div 
-            className={`sidebar-icon ${activePanels.includes('explorer') && isOpen ? 'active' : ''}`}
+            className={`sidebar-icon ${isPanelActive('explorer') ? 'active' : ''}`}
             onClick={() => handleIconClick('explorer')}
           >
             <FileCode size={24} />
@@ -435,7 +533,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         )}
         {(hasInstructorAccess || studentFeatures?.search !== false) && (
           <div 
-            className={`sidebar-icon ${activePanels.includes('search') && isOpen ? 'active' : ''}`}
+            className={`sidebar-icon ${isPanelActive('search') ? 'active' : ''}`}
             onClick={() => handleIconClick('search')}
           >
             <Search size={24} />
@@ -443,7 +541,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         )}
         {(hasInstructorAccess || studentFeatures?.instructions !== false) && (
           <div 
-            className={`sidebar-icon ${activePanels.includes('instructions') && isOpen ? 'active' : ''}`}
+            className={`sidebar-icon ${isPanelActive('instructions') ? 'active' : ''}`}
             onClick={() => handleIconClick('instructions')}
             title="Activity Instructions"
           >
@@ -452,7 +550,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         )}
         {(hasInstructorAccess || studentFeatures?.testing !== false) && (
           <div 
-            className={`sidebar-icon ${activePanels.includes('testing') && isOpen ? 'active' : ''}`}
+            className={`sidebar-icon ${isPanelActive('testing') ? 'active' : ''}`}
             onClick={() => handleIconClick('testing')}
           >
             <CheckSquare size={24} />
@@ -460,7 +558,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         )}
         {(hasInstructorAccess || studentFeatures?.modules !== false) && (
           <div 
-            className={`sidebar-icon ${activePanels.includes('modules') && isOpen ? 'active' : ''}`}
+            className={`sidebar-icon ${isPanelActive('modules') ? 'active' : ''}`}
             onClick={() => handleIconClick('modules')}
             title="Pyodide Modules"
           >
@@ -469,7 +567,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         )}
         {(hasInstructorAccess || studentFeatures?.chat !== false) && (
           <div 
-            className={`sidebar-icon ${activePanels.includes('chat') && isOpen ? 'active' : ''} ${(!hasInstructorAccess && myNeedsHelp) ? 'needs-help-flash' : ''}`}
+            className={`sidebar-icon ${isPanelActive('chat') ? 'active' : ''} ${(!hasInstructorAccess && myNeedsHelp) ? 'needs-help-flash' : ''}`}
             onClick={() => handleIconClick('chat')}
             title="Chat"
           >
@@ -477,9 +575,18 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             {(!hasInstructorAccess && myNeedsHelp) && <span className="sidebar-help-badge" />}
           </div>
         )}
+        {(hasInstructorAccess || studentFeatures?.presentations !== false) && (
+          <div 
+            className={`sidebar-icon ${isPanelActive('presentations') ? 'active' : ''}`}
+            onClick={() => handleIconClick('presentations')}
+            title="Presentations"
+          >
+            <Monitor size={24} />
+          </div>
+        )}
         {hasInstructorAccess && (
           <div 
-            className={`sidebar-icon ${activePanels.includes('instructor') && isOpen ? 'active' : ''}`}
+            className={`sidebar-icon ${isPanelActive('instructor') ? 'active' : ''}`}
             onClick={() => handleIconClick('instructor')}
             title="Instructor Controls"
           >
@@ -488,32 +595,43 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         )}
         {hasInstructorAccess && (
           <div 
-            className={`sidebar-icon ${activePanels.includes('roster') && isOpen ? 'active' : ''}`}
+            className={`sidebar-icon ${isPanelActive('roster') ? 'active' : ''}`}
             onClick={() => handleIconClick('roster')}
             title="Student Roster"
-            style={{ marginTop: 'auto', marginBottom: '10px' }}
+            style={{ marginTop: 'auto' }}
           >
             <Users size={24} />
           </div>
         )}
+        
+        {/* Help / Shortcuts Icon pushed to bottom */}
+        <div 
+          className={`sidebar-icon ${isPanelActive('help') ? 'active' : ''}`}
+          onClick={() => handleIconClick('help')}
+          title="Editor Shortcuts"
+          style={{ marginTop: hasInstructorAccess ? undefined : 'auto', marginBottom: '10px' }}
+        >
+          <Keyboard size={24} />
+        </div>
       </div>
       
       <div className={`sidebar-content ${!isOpen ? 'hidden' : ''}`}>
         {allowedPanels.length > 0 ? (() => {
-          const savedSizes = localStorage.getItem(`sidebar_panel_sizes_${allowedPanels.join(',')}`);
+          const panelsToRender = maximizedPanel ? [maximizedPanel] : allowedPanels;
+          const savedSizes = localStorage.getItem(`sidebar_panel_sizes_${panelsToRender.join(',')}`);
           const parsedSizes = savedSizes ? JSON.parse(savedSizes) : null;
           return (
             <Allotment 
-              key={allowedPanels.join(',')} 
+              key={panelsToRender.join(',')} 
               vertical 
               defaultSizes={parsedSizes || undefined}
               onChange={(sizes) => {
-                if (allowedPanels.length > 0) {
-                  localStorage.setItem(`sidebar_panel_sizes_${allowedPanels.join(',')}`, JSON.stringify(sizes));
+                if (panelsToRender.length > 0 && !maximizedPanel) {
+                  localStorage.setItem(`sidebar_panel_sizes_${panelsToRender.join(',')}`, JSON.stringify(sizes));
                 }
               }}
             >
-              {allowedPanels.map((panel) => (
+              {panelsToRender.map((panel) => (
                 <Allotment.Pane key={panel} minSize={100}>
                   <div className="sidebar-section" style={{ height: '100%' }}>
                     <div className="sidebar-header">
@@ -558,22 +676,43 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                             </button>
                           </>
                         )}
-                        
+                        {maximizedPanel === panel && (
+                          <button
+                            className="icon-btn-small pin-panel-btn"
+                            onClick={() => handlePinPanel(panel)}
+                            title={`Pin ${panel}`}
+                            style={{ 
+                              padding: '2px',
+                              color: 'var(--text-muted)',
+                              marginLeft: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              transition: 'color 0.15s ease'
+                            }}
+                          >
+                            <Pin size={14} style={{ transform: 'rotate(45deg)' }} />
+                          </button>
+                        )}
                         <button
                           className="icon-btn-small close-panel-btn"
                           onClick={() => handleClosePanel(panel)}
                           title={`Close ${panel}`}
                           style={{ 
-                            border: 'none', 
-                            background: 'transparent', 
-                            cursor: 'pointer', 
-                            display: 'flex', 
-                            alignItems: 'center',
                             padding: '2px',
                             color: 'var(--text-muted)',
                             marginLeft: '4px',
                             fontSize: '0.8rem',
                             fontWeight: 'bold',
+                            border: 'none',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             transition: 'color 0.15s ease'
                           }}
                         >

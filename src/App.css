@@ -91,6 +91,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   background-color: #1e1e1e; /* Standard Monaco background */
 }
 
@@ -138,6 +139,9 @@
 
 .editor-wrapper {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   position: relative;
 }
 

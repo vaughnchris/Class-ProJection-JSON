@@ -28,6 +28,7 @@ const useStore = create(
     testing: true,
     modules: true,
     chat: true,
+    presentations: true,
   },
   lastExecuteSignal: null,
   
@@ -167,6 +168,7 @@ const useStore = create(
       ...(isInstructor && activeTabObj ? { instructorCode: activeTabObj.code } : {})
     };
   }),
+  setTabs: (tabs) => set({ tabs }),
   addTab: (tab) => set((state) => {
     const isInstructor = state.role === 'instructor';
     const newTab = { ...tab, isOpen: true };
@@ -182,7 +184,7 @@ const useStore = create(
     if (state.activeTab === id) {
       const openTabs = newTabs.filter(t => t.isOpen);
       const idx = state.tabs.findIndex(t => t.id === id);
-      nextActiveTab = openTabs[Math.max(0, openTabs.length - 1)]?.id || 'about';
+      nextActiveTab = openTabs[Math.max(0, openTabs.length - 1)]?.id || null;
     }
     const isInstructor = state.role === 'instructor';
     const activeTabObj = newTabs.find(t => t.id === nextActiveTab);
@@ -208,7 +210,7 @@ const useStore = create(
     let nextActiveTab = activeTab;
     if (activeTab === id) {
       const openTabs = newTabs.filter(t => t.isOpen);
-      nextActiveTab = openTabs[Math.max(0, openTabs.length - 1)]?.id || 'about';
+      nextActiveTab = openTabs[Math.max(0, openTabs.length - 1)]?.id || null;
     }
     const isInstructor = state.role === 'instructor';
     const activeTabObj = newTabs.find(t => t.id === nextActiveTab);

@@ -16,9 +16,11 @@ import {
   File,
   Lock
 } from 'lucide-react';
+import Sidebar from './components/Sidebar/Sidebar';
 import CodeEditor from './components/Editor/CodeEditor';
 import ConsolePanel from './components/Console/ConsolePanel';
-import Sidebar from './components/Sidebar/Sidebar';
+import TestingPanel from './components/Sidebar/TestingPanel';
+import PresentationViewer from './components/Editor/PresentationViewer';
 import AuthModal from './components/Auth/AuthModal';
 import ProfileModal from './components/Auth/ProfileModal';
 import SessionModal from './components/SessionModal';
@@ -105,6 +107,9 @@ function App() {
   const activeTab = viewedStudentId 
     ? viewedStudentActiveTab 
     : (showSharedLecture && instructorTabs && instructorTabs.length > 0 ? instructorActiveTab : storeActiveTab);
+
+  const isPresentationActive = activeTab && (tabs.find(t => t.id === activeTab)?.isPresentation || (activeTab.startsWith('presentation_') && tabs.some(t => t.id === activeTab)));
+  const hideConsole = isPresentationActive;
 
   // Initialize Real-time synchronization
   useSync();
@@ -858,13 +863,21 @@ function App() {
                       }
                     }}
                   >
-                    <CodeEditor activeTab={activeTab} />
+                    {!activeTab ? (
+                      <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
+                        No open tabs
+                      </div>
+                    ) : tabs.find(t => t.id === activeTab)?.isPresentation || (activeTab.startsWith('presentation_') && tabs.some(t => t.id === activeTab)) ? (
+                      <PresentationViewer activeTab={activeTab} />
+                    ) : (
+                      <CodeEditor activeTab={activeTab} />
+                    )}
                   </div>
                 </div>
               </Allotment.Pane>
               
               {/* Bottom: Console */}
-              <Allotment.Pane minSize={150}>
+              <Allotment.Pane minSize={hideConsole ? 0 : 150} visible={!hideConsole}>
                 <ConsolePanel onRunInteractive={handleRunInteractive} />
               </Allotment.Pane>
             </Allotment>
