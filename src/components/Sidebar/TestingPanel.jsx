@@ -213,6 +213,35 @@ const TestingPanel = () => {
     );
   };
 
+  const renderSessionSummary = () => {
+    if (!isInstructor) return null;
+
+    const answeredQuestionIds = [...new Set(Object.values(responses).map(r => r.questionId))].filter(Boolean);
+    if (answeredQuestionIds.length === 0) return null;
+
+    return (
+      <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
+        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px' }}>Session Quiz Summary</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {answeredQuestionIds.map(qId => {
+            const qResponses = Object.values(responses).filter(r => r.questionId === qId);
+            const numCorrect = qResponses.filter(r => r.isCorrect).length;
+            const total = qResponses.length;
+            const foundQ = questions.find(q => q.id === qId);
+            const title = foundQ ? foundQ.title : qId;
+
+            return (
+              <div key={qId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '8px', backgroundColor: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }} title={title}>{title}</span>
+                <span>{numCorrect} / {total} Correct</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
 
   // --- Main Render ---
   return (
@@ -283,6 +312,9 @@ const TestingPanel = () => {
             )}
           </>
         )}
+
+        {/* Instructor Session Summary */}
+        {renderSessionSummary()}
       </div>
     </div>
   );
