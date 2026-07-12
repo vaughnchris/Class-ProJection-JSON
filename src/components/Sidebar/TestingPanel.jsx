@@ -253,14 +253,21 @@ const TestingPanel = () => {
     const answeredQuestionIds = [...new Set(Object.values(responses).map(r => r.questionId))].filter(Boolean);
     if (answeredQuestionIds.length === 0) return null;
 
+    let overallCorrect = 0;
+    let overallTotal = 0;
+
     return (
-      <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
+      <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
         <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px' }}>Session Quiz Summary</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {answeredQuestionIds.map(qId => {
             const qResponses = Object.values(responses).filter(r => r.questionId === qId);
             const numCorrect = qResponses.filter(r => r.isCorrect).length;
             const total = qResponses.length;
+            
+            overallCorrect += numCorrect;
+            overallTotal += total;
+
             const foundQ = questions.find(q => q.id === qId);
             const title = foundQ ? foundQ.title : qId;
 
@@ -272,6 +279,15 @@ const TestingPanel = () => {
             );
           })}
         </div>
+        
+        {overallTotal > 0 && (
+          <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Class Overall</span>
+            <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent-primary)' }}>
+              {Math.round((overallCorrect / overallTotal) * 100)}%
+            </span>
+          </div>
+        )}
       </div>
     );
   };
