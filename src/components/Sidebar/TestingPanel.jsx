@@ -23,7 +23,7 @@ const TestingPanel = () => {
   useEffect(() => {
     if (!sessionId) return;
 
-    // Listen to session document for activeTestQuestion
+    // Listen to session document for activeTestQuestion and testQuestions
     const sessionRef = doc(db, 'sessions', sessionId);
     const unsubSession = onSnapshot(sessionRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -32,6 +32,11 @@ const TestingPanel = () => {
           setActiveQuestion(data.activeTestQuestion);
         } else {
           setActiveQuestion(null);
+        }
+        
+        // Load persistent questions for instructor
+        if (isInstructor && data.testQuestions) {
+          setQuestions(data.testQuestions);
         }
       }
     });
@@ -74,6 +79,10 @@ const TestingPanel = () => {
         setError('No supported multiple-choice questions found in this QTI file.');
       } else {
         setQuestions(parsedQuestions);
+        if (sessionId) {
+          const sessionRef = doc(db, 'sessions', sessionId);
+          await updateDoc(sessionRef, { testQuestions: parsedQuestions });
+        }
       }
     } catch (err) {
       console.error(err);
@@ -317,7 +326,16 @@ const TestingPanel = () => {
               <div className="testing-question-list">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Extracted Questions</h3>
-                  <button className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => setQuestions([])}>Clear</button>
+                  <button 
+                    className="btn btn-outline" 
+                    style={{ padding: '4px 8px', fontSize: '0.75rem' }} 
+                    onClick={() => {
+                      setQuestions([]);
+                      if (sessionId) updateDoc(doc(db, 'sessions', sessionId), { testQuestions: [] });
+                    }}
+                  >
+                    Clear
+                  </button>
                 </div>
                 
                 {questions.map((q, i) => (
