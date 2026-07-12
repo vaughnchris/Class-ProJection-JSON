@@ -16,6 +16,7 @@ const TestingPanel = () => {
 
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
+  const [rosterSize, setRosterSize] = useState(0);
 
   // 1. Listen for active question & responses
   useEffect(() => {
@@ -49,6 +50,14 @@ const TestingPanel = () => {
     };
   }, [sessionId, isInstructor, user]);
 
+  // Fetch roster size for instructors
+  useEffect(() => {
+    if (isInstructor) {
+      getDocs(collection(db, 'authorized_students')).then(snap => {
+        setRosterSize(snap.docs.length);
+      }).catch(err => console.error('Error fetching roster size:', err));
+    }
+  }, [isInstructor]);
 
   // 2. Instructor: Handle File Upload
   const handleFileUpload = async (e) => {
@@ -161,14 +170,26 @@ const TestingPanel = () => {
     if (!activeQuestion) return null;
 
     const myCurrentResponse = Object.values(responses).find(r => r.userId === user?.uid && r.questionId === activeQuestion.id);
+    const currentResponsesCount = Object.values(responses).filter(r => r.questionId === activeQuestion.id).length;
+    const allAnswered = isInstructor && rosterSize > 0 && currentResponsesCount >= rosterSize;
 
     return (
       <div className="testing-active-question">
         <h3 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           Live Question
           {isInstructor && (
-            <button className="btn btn-outline" style={{ padding: '4px 8px', fontSize: '0.75rem', borderColor: '#ef4444', color: '#ef4444' }} onClick={handleStopBroadcast}>
-              End Quiz
+            <button 
+              className={`btn ${allAnswered ? 'btn-primary' : 'btn-outline'}`} 
+              style={{ 
+                padding: '4px 8px', 
+                fontSize: '0.75rem', 
+                backgroundColor: allAnswered ? '#22c55e' : 'transparent',
+                borderColor: allAnswered ? '#22c55e' : '#ef4444', 
+                color: allAnswered ? '#fff' : '#ef4444' 
+              }} 
+              onClick={handleStopBroadcast}
+            >
+              End Question
             </button>
           )}
         </h3>
