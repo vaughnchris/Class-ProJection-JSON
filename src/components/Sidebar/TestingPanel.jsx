@@ -13,6 +13,7 @@ const TestingPanel = () => {
   const [questions, setQuestions] = useState([]); // Instructor's parsed questions
   const [activeQuestion, setActiveQuestion] = useState(null); // The currently broadcasted question
   const [responses, setResponses] = useState({}); // Student responses map
+  const [instructorLocalResponse, setInstructorLocalResponse] = useState(null); // Instructor's local choice
 
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
@@ -86,6 +87,7 @@ const TestingPanel = () => {
     if (!sessionId) return;
     
     try {
+      setInstructorLocalResponse(null);
       // Broadcast new question
       const sessionRef = doc(db, 'sessions', sessionId);
       await updateDoc(sessionRef, {
@@ -109,10 +111,19 @@ const TestingPanel = () => {
     }
   };
 
-  // 5. Student: Submit Answer
+  // 5. Student/Instructor: Submit Answer
   const handleSubmitAnswer = async (choiceId) => {
+    if (!sessionId || !user || !activeQuestion) return;
+
+    if (isInstructor) {
+      if (instructorLocalResponse) return;
+      const isCorrect = choiceId === activeQuestion.correctId;
+      setInstructorLocalResponse({ choiceId, isCorrect });
+      return;
+    }
+
     const myCurrentResponse = activeQuestion ? Object.values(responses).find(r => r.userId === user?.uid && r.questionId === activeQuestion.id) : null;
-    if (isInstructor || !sessionId || !user || myCurrentResponse || !activeQuestion) return;
+    if (myCurrentResponse) return;
 
     const isCorrect = choiceId === activeQuestion.correctId;
     try {
@@ -169,7 +180,7 @@ const TestingPanel = () => {
   const renderActiveQuestion = () => {
     if (!activeQuestion) return null;
 
-    const myCurrentResponse = Object.values(responses).find(r => r.userId === user?.uid && r.questionId === activeQuestion.id);
+    const myCurrentResponse = isInstructor ? instructorLocalResponse : Object.values(responses).find(r => r.userId === user?.uid && r.questionId === activeQuestion.id);
     const currentResponsesCount = Object.values(responses).filter(r => r.questionId === activeQuestion.id).length;
     const allAnswered = isInstructor && rosterSize > 0 && currentResponsesCount >= rosterSize;
 
@@ -201,17 +212,10 @@ const TestingPanel = () => {
             let choiceClass = "testing-choice";
             
             // Logic for styling chosen/correct/incorrect states
-            if (isInstructor) {
-               // Instructor sees the correct answer highlighted always
-               if (choice.id === activeQuestion.correctId) choiceClass += " correct disabled";
-               else choiceClass += " disabled";
-            } else {
-               // Student view
-               if (myCurrentResponse) {
-                 choiceClass += " disabled";
-                 if (choice.id === activeQuestion.correctId) choiceClass += " correct";
-                 else if (myCurrentResponse.choiceId === choice.id) choiceClass += " incorrect";
-               }
+            if (myCurrentResponse) {
+              choiceClass += " disabled";
+              if (choice.id === activeQuestion.correctId) choiceClass += " correct";
+              else if (myCurrentResponse.choiceId === choice.id) choiceClass += " incorrect";
             }
 
             return (
@@ -220,8 +224,8 @@ const TestingPanel = () => {
                 className={choiceClass}
                 onClick={() => handleSubmitAnswer(choice.id)}
               >
-                {!isInstructor && myCurrentResponse && choice.id === activeQuestion.correctId && <CheckCircle2 size={16} color="#22c55e" />}
-                {!isInstructor && myCurrentResponse && myCurrentResponse.choiceId === choice.id && myCurrentResponse.choiceId !== activeQuestion.correctId && <XCircle size={16} color="#ef4444" />}
+                {myCurrentResponse && choice.id === activeQuestion.correctId && <CheckCircle2 size={16} color="#22c55e" />}
+                {myCurrentResponse && myCurrentResponse.choiceId === choice.id && myCurrentResponse.choiceId !== activeQuestion.correctId && <XCircle size={16} color="#ef4444" />}
                 
                 <span dangerouslySetInnerHTML={{ __html: choice.textHtml }} />
               </div>
