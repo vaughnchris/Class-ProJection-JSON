@@ -80,6 +80,25 @@ self.onmessage = async (event) => {
     
     // Write workspace files into Pyodide virtual filesystem (FS)
     if (event.data.files && Array.isArray(event.data.files)) {
+      const incomingNames = new Set(event.data.files.map(f => f.name).filter(Boolean));
+      
+      // Clean up files in Pyodide FS that are no longer in the workspace tabs list
+      try {
+        const allFiles = pyodide.FS.readdir('/');
+        const ignoreFiles = new Set(['.', '..', 'dev', 'proc', 'sys', 'tmp', 'home', 'lib', 'mnt']);
+        for (const fileName of allFiles) {
+          if (!ignoreFiles.has(fileName) && !incomingNames.has(fileName)) {
+            try {
+              pyodide.FS.unlink(fileName);
+            } catch (unlinkErr) {
+              console.error(`Failed to delete obsolete file ${fileName} from Pyodide FS:`, unlinkErr);
+            }
+          }
+        }
+      } catch (fsCleanErr) {
+        console.error("Failed to clean up obsolete files in Pyodide FS:", fsCleanErr);
+      }
+
       for (const file of event.data.files) {
         if (file.name) {
           try {
