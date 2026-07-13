@@ -76,5 +76,29 @@ export const pythonReference = [
     title: "Reading & Writing Files",
     description: "How to open, read from, and write to text files.",
     codeExample: `# Writing to a file\nwith open("data.txt", "w") as file:\n    file.write("Hello File!\\n")\n    file.write("Line 2")\n\n# Reading from a file\nwith open("data.txt", "r") as file:\n    content = file.read()\n    print(content)`
+  },
+  {
+    category: "JSON Data",
+    title: "json.load() - Read JSON File",
+    description: "Reads a file containing a JSON document and parses it into a Python dictionary or list.",
+    codeExample: `import json\n\n# Open the JSON file in read mode\nwith open("data.json", "r") as file:\n    # Load and parse the JSON\n    data = json.load(file)\n\n# Now 'data' is a standard Python dictionary!\nprint(data["classroom_name"])\nprint(data["students"][0]["name"])`
+  },
+  {
+    category: "JSON Data",
+    title: "json.dump() - Write JSON File",
+    description: "Serializes a Python object (like a dict or list) and writes it into a file as JSON.",
+    codeExample: `import json\n\nstudent_data = {\n    "name": "Alice",\n    "grade": 98.5,\n    "active": True\n}\n\n# Open file in write mode ('w')\nwith open("student.json", "w") as file:\n    # dump the dict. indent=4 formats it beautifully!\n    json.dump(student_data, file, indent=4)`
+  },
+  {
+    category: "JSON Data",
+    title: "json.loads() - Parse JSON String",
+    description: "Parses (loads) a string containing JSON data and returns a Python dictionary or list.",
+    codeExample: `import json\n\njson_string = '{"name": "Bob", "age": 21}'\n\n# Convert string to python dictionary\ndata = json.loads(json_string)\n\nprint(data["name"])  # Output: Bob\nprint(type(data))    # Output: <class 'dict'>`
+  },
+  {
+    category: "JSON Data",
+    title: "json.dumps() - Stringify Object",
+    description: "Converts a Python dictionary or list into a formatted JSON string.",
+    codeExample: `import json\n\nprofile = {\n    "username": "coder123",\n    "skills": ["python", "json"]\n}\n\n# Convert python dict to a clean JSON string\nraw_json = json.dumps(profile)\nprint(raw_json)\n\n# Convert with pretty printing formatting\npretty_json = json.dumps(profile, indent=2)\nprint(pretty_json)`
   }
 ];

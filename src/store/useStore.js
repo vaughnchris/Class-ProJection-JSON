@@ -3,6 +3,83 @@ import { persist } from 'zustand/middleware';
 import { db } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 
+const defaultMainPy = `import json
+
+# CS classroom JSON database
+print("--- 1. Loading data.json ---")
+with open("data.json", "r") as file:
+    data = json.load(file)
+
+print(f"Room name: {data.get('classroom_name')}")
+print("Roster of students:")
+for student in data.get("students", []):
+    status = "Active" if student.get("active") else "Inactive"
+    print(f"- {student.get('name')} (Grade: {student.get('grade')}%): {status}")
+
+# Modify JSON data (add a student)
+print("\\n--- 2. Adding a new student ---")
+new_student = {
+    "id": 103,
+    "name": "David Miller",
+    "grade": 94.0,
+    "active": True
+}
+data["students"].append(new_student)
+print(f"Added {new_student['name']} to list.")
+
+# Write back to updated_data.json
+print("\\n--- 3. Writing to updated_data.json ---")
+with open("updated_data.json", "w") as file:
+    json.dump(data, file, indent=4)
+
+print("Saved successfully! The new file 'updated_data.json' will appear in your explorer shortly.")
+`;
+
+const defaultDataJson = `{
+  "classroom_name": "CS 101: Introduction to Programming",
+  "instructor": "Professor Chris Vaughn",
+  "semester": "Fall 2026",
+  "students": [
+    {
+      "id": 101,
+      "name": "Alice Smith",
+      "grade": 95.5,
+      "active": true
+    },
+    {
+      "id": 102,
+      "name": "Bob Johnson",
+      "grade": 88.0,
+      "active": false
+    }
+  ]
+}
+`;
+
+const defaultTabs = [
+  { 
+    id: 'about', 
+    name: 'About', 
+    code: '', 
+    isCloseable: false,
+    isOpen: true
+  },
+  {
+    id: 'main_py',
+    name: 'main.py',
+    code: defaultMainPy,
+    isCloseable: true,
+    isOpen: true
+  },
+  {
+    id: 'data_json',
+    name: 'data.json',
+    code: defaultDataJson,
+    isCloseable: true,
+    isOpen: true
+  }
+];
+
 const useStore = create(
   persist(
     (set) => ({
@@ -13,10 +90,10 @@ const useStore = create(
   role: null, 
   userId: null,
   userName: null,
-
+ 
   // Session Data
   sessionId: localStorage.getItem('ide_session_id') || null,
-  sessionTitle: 'Python Editor',
+  sessionTitle: 'Python JSON Explorer',
   activeMode: 'broadcast', // 'independent' | 'broadcast' | 'execute'
   isSharing: false,
   allowEdit: false,
@@ -34,22 +111,14 @@ const useStore = create(
   lastExecuteSignal: null,
   
   // Instructor State
-  instructorCode: 'print("Welcome to Class Projection!")',
+  instructorCode: defaultMainPy,
   instructorCursor: { lineNumber: 1, column: 1 },
   instructorScroll: 0,
   
   // Student Local State
   activeTab: 'about',
-  tabs: [
-    { 
-      id: 'about', 
-      name: 'About', 
-      code: '', 
-      isCloseable: true,
-      isOpen: true
-    }
-  ],
-  studentLocalCode: '',
+  tabs: defaultTabs,
+  studentLocalCode: defaultMainPy,
   studentNeedHelp: false,
   selectedChatUser: null,
   viewedStudentId: null,
@@ -59,13 +128,13 @@ const useStore = create(
   activityInstructions: '',
   instructorTabs: [],
   instructorActiveTab: null,
-
+ 
   // Execution State
   consoleOutput: [],
   interactiveHistory: [], // For the interactive REPL tab
   isExecuting: false,
   isInteractiveExecuting: false,
-
+ 
   // Actions
   setUser: (userData) => set({ 
     user: userData,
@@ -85,7 +154,7 @@ const useStore = create(
     }
     set({ sessionId });
   },
-  setSessionTitle: (title) => set({ sessionTitle: title || 'Python Editor' }),
+  setSessionTitle: (title) => set({ sessionTitle: title || 'Python JSON Explorer' }),
   leaveSession: () => {
     localStorage.removeItem('ide_session_id');
     set((state) => ({
@@ -97,29 +166,13 @@ const useStore = create(
     viewedStudentId: null,
     viewedStudentTabs: [],
     viewedStudentActiveTab: null,
-    sessionTitle: 'Python Editor',
-    tabs: [
-      { 
-        id: 'about', 
-        name: 'About', 
-        code: '', 
-        isCloseable: true,
-        isOpen: true
-      }
-    ],
+    sessionTitle: 'Python JSON Explorer',
+    tabs: defaultTabs,
     activeTab: 'about'
     }));
   },
   resetWorkspace: () => set({
-    tabs: [
-      { 
-        id: 'about', 
-        name: 'About', 
-        code: '', 
-        isCloseable: true,
-        isOpen: true
-      }
-    ],
+    tabs: defaultTabs,
     activeTab: 'about'
   }),
   setActiveMode: (mode) => set({ activeMode: mode }),

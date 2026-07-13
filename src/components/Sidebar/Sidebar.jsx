@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileCode, Users, FileText, X, Pin, Library, MessageCircle, Monitor, Upload, Play, CheckSquare, GraduationCap, Keyboard, Plus, Trash2, Lock, Folder, FolderOpen, Copy, Table, File, Download, Upload as UploadIcon } from 'lucide-react';
+import { Search, FileCode, Users, FileText, X, Pin, Library, MessageCircle, Monitor, Upload, Play, CheckSquare, GraduationCap, Keyboard, Plus, Trash2, Lock, Folder, FolderOpen, Copy, Table, File, Download, Upload as UploadIcon, Braces, FileJson } from 'lucide-react';
 import useStore from '../../store/useStore';
 import PromptModal from '../PromptModal';
 import ChatPanel from './ChatPanel';
@@ -9,6 +9,7 @@ import SearchPanel from './SearchPanel';
 import PresentationPanel from './PresentationPanel';
 import TestingPanel from './TestingPanel';
 import HelpPanel from './HelpPanel';
+import JsonInspectorPanel from './JsonInspectorPanel';
 import './Sidebar.css';
 import { Allotment } from 'allotment';
 import { db } from '../../firebase';
@@ -101,6 +102,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     switch (ext) {
       case 'py':
         return <FileCode size={14} className="file-icon-color" />;
+      case 'json':
+        return <FileJson size={14} className="json-icon-color" style={{ color: '#f97316' }} />;
       case 'txt':
         return <FileText size={14} className="txt-icon-color" />;
       case 'csv':
@@ -322,6 +325,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
   const renderPanelContent = (panel) => {
     switch(panel) {
+      case 'json_inspector':
+        return <JsonInspectorPanel />;
       case 'explorer':
         return (
           <div className="file-tree">
@@ -532,6 +537,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     }
     if (!hasInstructorAccess) {
       if (panel === 'explorer' && studentFeatures?.files === false) return false;
+      if (panel === 'json_inspector' && studentFeatures?.files === false) return false;
       if (panel === 'search' && studentFeatures?.search === false) return false;
       if (panel === 'instructions' && studentFeatures?.instructions === false) return false;
       if (panel === 'testing' && studentFeatures?.testing === false) return false;
@@ -552,6 +558,15 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             onClick={() => handleIconClick('explorer')}
           >
             <FileCode size={24} />
+          </div>
+        )}
+        {(hasInstructorAccess || studentFeatures?.files !== false) && (
+          <div 
+            className={`sidebar-icon ${isPanelActive('json_inspector') ? 'active' : ''}`}
+            onClick={() => handleIconClick('json_inspector')}
+            title="JSON Inspector"
+          >
+            <Braces size={24} />
           </div>
         )}
         {(hasInstructorAccess || studentFeatures?.search !== false) && (

@@ -93,9 +93,53 @@ self.onmessage = async (event) => {
       self.postMessage({ type: 'repl_output', text: result.toString(), id });
     }
     
-    self.postMessage({ type: 'done', id, isRepl });
+    // Read files back from Pyodide virtual FS to sync back to the main thread
+    const fsFiles = [];
+    try {
+      const allFiles = pyodide.FS.readdir('/');
+      const ignoreFiles = new Set(['.', '..', 'dev', 'proc', 'sys', 'tmp', 'home', 'lib', 'mnt']);
+      for (const fileName of allFiles) {
+        if (!ignoreFiles.has(fileName)) {
+          try {
+            const stat = pyodide.FS.stat(fileName);
+            const isDir = pyodide.FS.isDir(stat.mode);
+            if (!isDir) {
+              const content = pyodide.FS.readFile(fileName, { encoding: 'utf8' });
+              fsFiles.push({ name: fileName, code: content });
+            }
+          } catch (statErr) {
+            // ignore files we can't read or system links
+          }
+        }
+      }
+    } catch (fsErr) {
+      console.error("Error reading back files from Pyodide FS:", fsErr);
+    }
+
+    self.postMessage({ type: 'done', id, isRepl, files: fsFiles });
   } catch (error) {
     self.postMessage({ type: isRepl ? 'repl_error' : 'error', text: error.message, id });
-    self.postMessage({ type: 'done', id, isRepl });
+    
+    // Attempt FS scan even on error in case partial file modifications occurred
+    const fsFiles = [];
+    try {
+      const pyodide = await pyodideReadyPromise;
+      const allFiles = pyodide.FS.readdir('/');
+      const ignoreFiles = new Set(['.', '..', 'dev', 'proc', 'sys', 'tmp', 'home', 'lib', 'mnt']);
+      for (const fileName of allFiles) {
+        if (!ignoreFiles.has(fileName)) {
+          try {
+            const stat = pyodide.FS.stat(fileName);
+            const isDir = pyodide.FS.isDir(stat.mode);
+            if (!isDir) {
+              const content = pyodide.FS.readFile(fileName, { encoding: 'utf8' });
+              fsFiles.push({ name: fileName, code: content });
+            }
+          } catch (statErr) {}
+        }
+      }
+    } catch (fsErr) {}
+
+    self.postMessage({ type: 'done', id, isRepl, files: fsFiles });
   }
 };

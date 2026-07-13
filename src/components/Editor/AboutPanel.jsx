@@ -50,7 +50,7 @@ const AboutPanel = () => {
           alignItems: 'center',
           gap: '12px'
         }}>
-          <Sparkles size={36} style={{ color: '#3b82f6' }} /> Class Projection IDE
+          <Sparkles size={36} style={{ color: '#3b82f6' }} /> Python JSON Explorer
         </h1>
         <p style={{
           fontSize: '1.1rem',
@@ -59,7 +59,7 @@ const AboutPanel = () => {
           marginBottom: 0,
           fontWeight: 400
         }}>
-          A premium multi-user workspace for real-time code presentations, execution, and collaborative classroom exercises.
+          A premium multi-user workspace optimized for teaching students how to read, write, parse, and structure JSON files using Python.
         </p>
       </div>
 
@@ -78,9 +78,9 @@ const AboutPanel = () => {
             <div style={iconWrapperStyle('#3b82f6')}>
               <Files size={20} />
             </div>
-            <h3 style={cardTitleStyle}>Workspace Filesystem</h3>
+            <h3 style={cardTitleStyle}>Edit JSON & Python Files</h3>
             <p style={cardDescStyle}>
-              Create, rename, and organize <strong>.py</strong>, <strong>.txt</strong>, <strong>.csv</strong>, and <strong>.tsv</strong> files in the sidebar explorer.
+              Create, rename, and edit <strong>.py</strong> and <strong>.json</strong> files in the Monaco Editor with full schema assistance and syntax highlighting.
             </p>
           </div>
 
@@ -89,31 +89,31 @@ const AboutPanel = () => {
             <div style={iconWrapperStyle('#10b981')}>
               <Terminal size={20} />
             </div>
-            <h3 style={cardTitleStyle}>Memory Modules & Data</h3>
+            <h3 style={cardTitleStyle}>Parse & Run Locally</h3>
             <p style={cardDescStyle}>
-              Standard Python <code>import</code> statements and file reads (like <code>open()</code>) work seamlessly with all workspace files.
+              Use Python's built-in <code>json</code> module to load files, inspect properties, or write modified dictionaries back to the filesystem.
             </p>
           </div>
 
-          {/* Card 3: Realtime sync */}
+          {/* Card 3: JSON Inspector */}
           <div style={cardStyle}>
             <div style={iconWrapperStyle('#8b5cf6')}>
               <RefreshCw size={20} />
             </div>
-            <h3 style={cardTitleStyle}>Real-time Presentation Sync</h3>
+            <h3 style={cardTitleStyle}>Visual JSON Inspector</h3>
             <p style={cardDescStyle}>
-              Synchronize lecture codes in broadcast mode, release workspaces to independent execution, or hand over copies for student edits.
+              Open the JSON inspector (the Braces tab in the sidebar) to parse JSON files, view interactive tree hierarchies, and generate Python access queries.
             </p>
           </div>
 
-          {/* Card 4: Drag delete */}
+          {/* Card 4: Filesystem Sync */}
           <div style={cardStyle}>
             <div style={iconWrapperStyle('#ef4444')}>
               <Trash2 size={20} />
             </div>
-            <h3 style={cardTitleStyle}>Drag-and-Drop Trash</h3>
+            <h3 style={cardTitleStyle}>Automatic Filesystem Sync</h3>
             <p style={cardDescStyle}>
-              Permanently trash custom files in the File Explorer by dragging and dropping them into the header recycle bin.
+              Any new files created or modified by Python during execution (e.g. <code>updated_data.json</code>) automatically sync back to your IDE tabs.
             </p>
           </div>
         </div>
@@ -128,12 +128,12 @@ const AboutPanel = () => {
       }}>
         <div style={infoBoxStyle}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 12px 0', fontSize: '1.1rem', color: '#60a5fa' }}>
-            <GraduationCap size={18} /> Presentation Guide
+            <GraduationCap size={18} /> JSON Parsing Guide
           </h3>
           <ul style={listStyle}>
-            <li>Use the chevron buttons in the tab bar to adjust font size dynamically.</li>
-            <li>Press <strong>Run</strong> in the console to run the active tab script in the virtual environment.</li>
-            <li>Toggle <strong>Allow Edit</strong> to give copies of the active lecture scripts to students instantly.</li>
+            <li>Use <code>json.load(file)</code> for reading JSON files into Python dicts/lists.</li>
+            <li>Use <code>json.dump(data, file, indent=4)</code> to format and save JSON databases.</li>
+            <li>Use the **Run** button to execute scripts and see how console output and file writes synchronize in real time.</li>
           </ul>
         </div>
 
@@ -142,9 +142,9 @@ const AboutPanel = () => {
             <Keyboard size={18} /> Quick Shortcuts
           </h3>
           <ul style={listStyle}>
-            <li>Double-click any file in the Explorer list or Tab bar to rename it.</li>
-            <li>Click the <code>✕</code> on a tab to hide/close the tab. Reopen it anytime from the Explorer.</li>
-            <li>Click the **Upload** icon next to the <code>+</code> button to import files directly from your computer.</li>
+            <li>Double-click any file in the Explorer list or Tab bar to rename it. Include <code>.json</code> to enable JSON mode.</li>
+            <li>Click the JSON Inspector tab (brackets icon) in the sidebar to visualize keys and auto-build Python retrieval snippets.</li>
+            <li>Use the file upload icon next to the <code>+</code> button to import external JSON logs or data.</li>
           </ul>
         </div>
       </div>

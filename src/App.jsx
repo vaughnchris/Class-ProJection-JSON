@@ -14,7 +14,10 @@ import {
   FileCode,
   Table,
   File,
-  Lock
+  Lock,
+  FileText,
+  FileJson,
+  Braces
 } from 'lucide-react';
 import Sidebar from './components/Sidebar/Sidebar';
 import CodeEditor from './components/Editor/CodeEditor';
@@ -233,6 +236,8 @@ function App() {
     switch (ext) {
       case 'py':
         return <FileCode size={14} className="file-icon-color" style={{ color: '#fbbf24' }} />;
+      case 'json':
+        return <FileJson size={14} className="json-icon-color" style={{ color: '#f97316' }} />;
       case 'txt':
         return <FileText size={14} className="txt-icon-color" style={{ color: '#94a3b8' }} />;
       case 'csv':
@@ -248,8 +253,8 @@ function App() {
     setPromptState({
       isOpen: true,
       title: 'New File',
-      subtitle: 'Create a new python script or text document',
-      placeholder: 'e.g., script.py, data.csv, notes.txt',
+      subtitle: 'Create a new python script, JSON file, or database table',
+      placeholder: 'e.g., script.py, data.json, data.csv, notes.txt',
       defaultValue: '',
       onConfirm: (filename) => {
         if (!filename || filename.trim() === '') return;
@@ -348,6 +353,28 @@ function App() {
           setInteractiveExecuting(false);
         } else {
           setExecuting(false);
+          // Sync virtual filesystem files back to Zustand workspace tabs
+          if (event.data.files && Array.isArray(event.data.files)) {
+            const currentTabs = useStore.getState().tabs;
+            const updateTabCode = useStore.getState().updateTabCode;
+            const addTab = useStore.getState().addTab;
+            
+            event.data.files.forEach(fsFile => {
+              const existingTab = currentTabs.find(t => t.name === fsFile.name);
+              if (existingTab) {
+                if (existingTab.code !== fsFile.code) {
+                  updateTabCode(existingTab.id, fsFile.code);
+                }
+              } else {
+                addTab({
+                  id: 'custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                  name: fsFile.name,
+                  code: fsFile.code,
+                  isCloseable: true
+                });
+              }
+            });
+          }
         }
       }
     };

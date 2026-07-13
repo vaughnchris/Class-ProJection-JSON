@@ -406,13 +406,18 @@ const CodeEditor = ({ activeTab }) => {
   };
 
   const getEditorLanguage = (name) => {
+    if (!name) return 'plaintext';
+    const ext = name.split('.').pop().toLowerCase();
+    if (ext === 'json') return 'json';
     if (isPythonTab(name)) return 'python';
     return 'plaintext';
   };
 
   const getEditorTheme = (name) => {
-    if (isPythonTab(name)) return 'vs-dark';
-    return 'vs'; // Light theme for data/text files
+    if (!name) return 'vs';
+    const ext = name.split('.').pop().toLowerCase();
+    if (isPythonTab(name) || ext === 'json') return 'vs-dark';
+    return 'vs'; // Light theme for simple plaintext files
   };
 
   if (activeTab === 'about') {
