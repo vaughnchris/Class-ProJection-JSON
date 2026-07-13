@@ -71,6 +71,13 @@ self.onmessage = async (event) => {
   try {
     const pyodide = await pyodideReadyPromise;
     
+    // Force working directory to root / so that Python scripts and JS FS sync match paths
+    try {
+      pyodide.FS.chdir('/');
+    } catch (chdirErr) {
+      console.error("Failed to chdir to / in Pyodide:", chdirErr);
+    }
+    
     // Write workspace files into Pyodide virtual filesystem (FS)
     if (event.data.files && Array.isArray(event.data.files)) {
       for (const file of event.data.files) {
