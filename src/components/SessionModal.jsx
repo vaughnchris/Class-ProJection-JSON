@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import useStore from '../store/useStore';
 import { X, Play, LogIn, Trash2, Clock } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import './Auth/AuthModal.css';
 
 const SessionModal = ({ isOpen, onClose }) => {
@@ -28,7 +28,10 @@ const SessionModal = ({ isOpen, onClose }) => {
       const querySnapshot = await getDocs(q);
       const sessionsData = [];
       querySnapshot.forEach((docSnap) => {
-        sessionsData.push({ id: docSnap.id, ...docSnap.data() });
+        const data = docSnap.data();
+        if (data.program === 'python') {
+          sessionsData.push({ id: docSnap.id, ...data });
+        }
       });
       // Sort client side by lastUpdatedAt desc
       sessionsData.sort((a, b) => {
@@ -51,7 +54,8 @@ const SessionModal = ({ isOpen, onClose }) => {
         instructorId: user.uid,
         name: roomNameInput.trim() || `Session ${generatedCode}`,
         createdAt: new Date().toISOString(),
-        lastUpdatedAt: new Date().toISOString()
+        lastUpdatedAt: new Date().toISOString(),
+        program: 'python'
       }, { merge: true });
     } catch (err) {
       console.error("Failed to create session metadata", err);
@@ -71,15 +75,32 @@ const SessionModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleJoinSession = (e) => {
+  const handleJoinSession = async (e) => {
     e.preventDefault();
     const code = roomCodeInput.trim().toUpperCase();
     if (code.length < 3) {
       setError('Please enter a valid room code.');
       return;
     }
-    setSessionId(code);
-    onClose();
+    
+    setError('');
+    try {
+      const sessionDoc = await getDoc(doc(db, 'sessions', code));
+      if (!sessionDoc.exists()) {
+        setError('Room not found. Please check the code.');
+        return;
+      }
+      const data = sessionDoc.data();
+      if (data.program !== 'python') {
+        setError('This room code is for another application (Web Laboratory).');
+        return;
+      }
+      setSessionId(code);
+      onClose();
+    } catch (err) {
+      console.error("Failed to join session", err);
+      setError('Failed to verify room code. Please try again.');
+    }
   };
 
   if (!isOpen) return null;

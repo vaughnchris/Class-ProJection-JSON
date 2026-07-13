@@ -29,6 +29,7 @@ export const useSync = () => {
     setStudentFeatures,
     setLastExecuteSignal,
     setLockStudentActivity,
+    setSessionTitle,
     sessionId
   } = useStore();
 
@@ -37,6 +38,11 @@ export const useSync = () => {
   const studentDebounceTimerRef = useRef(null);
   const prevModeRef = useRef(activeMode);
   const prevAllowEditRef = useRef(allowEdit);
+  const hasHydratedRef = useRef(false);
+
+  useEffect(() => {
+    hasHydratedRef.current = false;
+  }, [sessionId]);
 
   const viewedStudentId = useStore(state => state.viewedStudentId);
   const viewedStudentMode = useStore(state => state.viewedStudentMode);
@@ -95,9 +101,23 @@ export const useSync = () => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         
+        // For instructors: hydrate local workspace from the session on initial load of this session
+        if (isInstructor && data.instructorTabs && !hasHydratedRef.current) {
+          hasHydratedRef.current = true;
+          useStore.setState({
+            tabs: data.instructorTabs,
+            activeTab: data.instructorActiveTab || data.instructorTabs[0]?.id || 'about'
+          });
+        }
+
         // Sync sharing state
         if (data.isSharing !== undefined) {
           setIsSharing(data.isSharing);
+        }
+        
+        // Sync session title
+        if (data.sessionTitle !== undefined) {
+          setSessionTitle(data.sessionTitle);
         }
         
         // Sync student features

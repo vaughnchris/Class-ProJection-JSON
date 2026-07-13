@@ -4,8 +4,17 @@ import { db, storage } from '../firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
-export const exportLecturePackage = async (sessionId, tabs, onProgress) => {
+export const exportLecturePackage = async (sessionId, tabs, studentFeatures, onProgress) => {
   try {
+    const defaultName = `Lecture Package - ${new Date().toLocaleDateString()}`;
+    const customName = window.prompt("Enter a name for this lecture package:", defaultName);
+    
+    // User cancelled the prompt
+    if (customName === null) {
+      return false;
+    }
+    
+    const finalName = customName.trim() || defaultName;
     const zip = new JSZip();
     
     // 1. Fetch test questions from Firestore
@@ -21,8 +30,10 @@ export const exportLecturePackage = async (sessionId, tabs, onProgress) => {
     // 2. Build Manifest
     const manifest = {
       version: 1,
-      title: `Lecture Package - ${new Date().toLocaleDateString()}`,
+      program: 'python',
+      title: finalName,
       testQuestions,
+      studentFeatures,
       tabs: []
     };
 
@@ -59,7 +70,8 @@ export const exportLecturePackage = async (sessionId, tabs, onProgress) => {
     // 5. Generate and Download Zip
     if (onProgress) onProgress('Zipping files...');
     const content = await zip.generateAsync({ type: "blob" });
-    saveAs(content, `lecture_package_${Date.now()}.zip`);
+    const safeFilename = finalName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    saveAs(content, `${safeFilename}.zip`);
     
     if (onProgress) onProgress('');
     return true;
@@ -80,6 +92,10 @@ export const importLecturePackage = async (file, sessionId, setTabs, onProgress)
     }
     const manifestStr = await manifestFile.async("string");
     const manifest = JSON.parse(manifestStr);
+
+    if (manifest.program !== 'python') {
+      throw new Error("This lecture package is not compatible with Python Class Projector (it may be a Web Laboratory package).");
+    }
 
     // 2. Upload PDFs and rebuild Tabs
     const newTabs = [];
@@ -116,14 +132,21 @@ export const importLecturePackage = async (file, sessionId, setTabs, onProgress)
       }
     }
 
-    // 3. Update Firestore (Questions & Tabs)
+    // 3. Update Firestore (Questions & Tabs & Features)
     if (sessionId) {
       if (onProgress) onProgress('Updating session...');
       const sessionRef = doc(db, 'sessions', sessionId);
-      await updateDoc(sessionRef, { 
+      const updateData = { 
         testQuestions: manifest.testQuestions || [],
         instructorTabs: newTabs
-      });
+      };
+      if (manifest.title) {
+        updateData.sessionTitle = manifest.title;
+      }
+      if (manifest.studentFeatures) {
+        updateData.studentFeatures = manifest.studentFeatures;
+      }
+      await updateDoc(sessionRef, updateData);
     }
 
     // 4. Update local state

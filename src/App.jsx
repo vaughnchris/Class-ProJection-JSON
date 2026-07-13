@@ -25,6 +25,7 @@ import AuthModal from './components/Auth/AuthModal';
 import ProfileModal from './components/Auth/ProfileModal';
 import SessionModal from './components/SessionModal';
 import LeaveRoomModal from './components/LeaveRoomModal';
+import PromptModal from './components/PromptModal';
 import useStore from './store/useStore';
 import { useSync } from './hooks/useSync';
 import { useWorkspaceSync } from './hooks/useWorkspaceSync';
@@ -46,6 +47,14 @@ function App() {
   const [swReady, setSwReady] = useState(false);
   const [dragOverTabId, setDragOverTabId] = useState(null);
   const [isDragOverEditor, setIsDragOverEditor] = useState(false);
+  const [promptState, setPromptState] = useState({
+    isOpen: false,
+    title: '',
+    subtitle: '',
+    defaultValue: '',
+    placeholder: '',
+    onConfirm: () => {}
+  });
 
   // Initialize sync hooks
   useWorkspaceSync();
@@ -86,7 +95,8 @@ function App() {
     leaveSession,
     updateSession,
     lastExecuteSignal,
-    lockStudentActivity
+    lockStudentActivity,
+    sessionTitle
   } = useStore();
 
   const viewedStudentId = useStore(state => state.viewedStudentId);
@@ -235,19 +245,25 @@ function App() {
   };
 
   const handleCreateNewTab = () => {
-    const filename = prompt("Enter file name (e.g., data.csv, notes.txt, helper.py):");
-    if (!filename || filename.trim() === '') return;
-    
-    const name = filename.trim();
-    const hasExtension = name.includes('.');
-    const finalName = hasExtension ? name : name + '.py';
-    
-    const newTabId = 'custom_' + Date.now();
-    addTab({
-      id: newTabId,
-      name: finalName,
-      code: '',
-      isCloseable: true
+    setPromptState({
+      isOpen: true,
+      title: 'New File',
+      subtitle: 'Create a new python script or text document',
+      placeholder: 'e.g., script.py, data.csv, notes.txt',
+      defaultValue: '',
+      onConfirm: (filename) => {
+        if (!filename || filename.trim() === '') return;
+        const name = filename.trim();
+        const hasExtension = name.includes('.');
+        const finalName = hasExtension ? name : name + '.py';
+        const newTabId = 'custom_' + Date.now();
+        addTab({
+          id: newTabId,
+          name: finalName,
+          code: '',
+          isCloseable: true
+        });
+      }
     });
   };
 
@@ -278,13 +294,21 @@ function App() {
 
   const handleRenameTab = (tabId, currentName) => {
     if (tabId === 'about') return;
-    const newName = prompt("Rename Tab:", currentName);
-    if (newName && newName.trim() !== '') {
-      const trimmed = newName.trim();
-      const hasExtension = trimmed.includes('.');
-      const finalName = hasExtension ? trimmed : trimmed + '.py';
-      renameTab(tabId, finalName);
-    }
+    setPromptState({
+      isOpen: true,
+      title: 'Rename File',
+      subtitle: `Rename "${currentName}"`,
+      placeholder: 'Enter new file name',
+      defaultValue: currentName,
+      onConfirm: (newName) => {
+        if (newName && newName.trim() !== '') {
+          const trimmed = newName.trim();
+          const hasExtension = trimmed.includes('.');
+          const finalName = hasExtension ? trimmed : trimmed + '.py';
+          renameTab(tabId, finalName);
+        }
+      }
+    });
   };
 
   const handleCloseTab = (tab) => {
@@ -582,7 +606,7 @@ function App() {
             <Menu size={18} />
           </button>
           <div className="logo">
-            Class ProJection - Python Editor
+            Class ProJection - {sessionTitle || 'Python Editor'}
             {viewedStudentId && (
               <span style={{ 
                 marginLeft: '12px', 
@@ -894,6 +918,15 @@ function App() {
         onLeave={leaveSession}
         onCloseRoom={handleCloseRoom}
         role={role}
+      />
+      <PromptModal
+        isOpen={promptState.isOpen}
+        onClose={() => setPromptState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={promptState.onConfirm}
+        title={promptState.title}
+        subtitle={promptState.subtitle}
+        defaultValue={promptState.defaultValue}
+        placeholder={promptState.placeholder}
       />
     </div>
   );

@@ -16,6 +16,7 @@ const useStore = create(
 
   // Session Data
   sessionId: localStorage.getItem('ide_session_id') || null,
+  sessionTitle: 'Python Editor',
   activeMode: 'broadcast', // 'independent' | 'broadcast' | 'execute'
   isSharing: false,
   allowEdit: false,
@@ -84,6 +85,7 @@ const useStore = create(
     }
     set({ sessionId });
   },
+  setSessionTitle: (title) => set({ sessionTitle: title || 'Python Editor' }),
   leaveSession: () => {
     localStorage.removeItem('ide_session_id');
     set((state) => ({
@@ -95,6 +97,7 @@ const useStore = create(
     viewedStudentId: null,
     viewedStudentTabs: [],
     viewedStudentActiveTab: null,
+    sessionTitle: 'Python Editor',
     tabs: [
       { 
         id: 'about', 

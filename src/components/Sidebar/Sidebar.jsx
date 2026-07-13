@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, FileCode, Users, FileText, X, Pin, Library, MessageCircle, Monitor, Upload, Play, CheckSquare, GraduationCap, Keyboard, Plus, Trash2, Lock, Folder, FolderOpen, Copy, Table, File, Download, Upload as UploadIcon } from 'lucide-react';
 import useStore from '../../store/useStore';
+import PromptModal from '../PromptModal';
 import ChatPanel from './ChatPanel';
 import RosterPanel from './RosterPanel';
 import ModulesPanel from './ModulesPanel';
@@ -25,6 +26,14 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [packageProgress, setPackageProgress] = useState('');
+  const [promptState, setPromptState] = useState({
+    isOpen: false,
+    title: '',
+    subtitle: '',
+    defaultValue: '',
+    placeholder: '',
+    onConfirm: () => {}
+  });
   
   const { 
     user, 
@@ -104,31 +113,45 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   };
 
   const handleCreateNewTab = () => {
-    const filename = prompt("Enter file name (e.g., data.csv, notes.txt, helper.py):");
-    if (!filename || filename.trim() === '') return;
-    
-    const name = filename.trim();
-    const hasExtension = name.includes('.');
-    const finalName = hasExtension ? name : name + '.py';
-    
-    const newTabId = 'custom_' + Date.now();
-    addTab({
-      id: newTabId,
-      name: finalName,
-      code: '',
-      isCloseable: true
+    setPromptState({
+      isOpen: true,
+      title: 'New File',
+      subtitle: 'Create a new python script or text document',
+      placeholder: 'e.g., script.py, data.csv, notes.txt',
+      defaultValue: '',
+      onConfirm: (filename) => {
+        if (!filename || filename.trim() === '') return;
+        const name = filename.trim();
+        const hasExtension = name.includes('.');
+        const finalName = hasExtension ? name : name + '.py';
+        const newTabId = 'custom_' + Date.now();
+        addTab({
+          id: newTabId,
+          name: finalName,
+          code: '',
+          isCloseable: true
+        });
+      }
     });
   };
 
   const handleRenameTab = (tabId, currentName) => {
     if (tabId === 'about') return;
-    const newName = prompt("Rename File:", currentName);
-    if (newName && newName.trim() !== '') {
-      const trimmed = newName.trim();
-      const hasExtension = trimmed.includes('.');
-      const finalName = hasExtension ? trimmed : trimmed + '.py';
-      renameTab(tabId, finalName);
-    }
+    setPromptState({
+      isOpen: true,
+      title: 'Rename File',
+      subtitle: `Rename "${currentName}"`,
+      placeholder: 'Enter new file name',
+      defaultValue: currentName,
+      onConfirm: (newName) => {
+        if (newName && newName.trim() !== '') {
+          const trimmed = newName.trim();
+          const hasExtension = trimmed.includes('.');
+          const finalName = hasExtension ? trimmed : trimmed + '.py';
+          renameTab(tabId, finalName);
+        }
+      }
+    });
   };
 
   const handleCloseTab = (tab) => {
@@ -266,7 +289,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     setIsExporting(true);
     setPackageProgress('Starting export...');
     try {
-      await exportLecturePackage(sessionId, tabs, setPackageProgress);
+      await exportLecturePackage(sessionId, tabs, studentFeatures, setPackageProgress);
     } catch (err) {
       alert("Failed to export lecture: " + err.message);
     }
@@ -730,6 +753,15 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           );
         })() : null}
       </div>
+      <PromptModal
+        isOpen={promptState.isOpen}
+        onClose={() => setPromptState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={promptState.onConfirm}
+        title={promptState.title}
+        subtitle={promptState.subtitle}
+        defaultValue={promptState.defaultValue}
+        placeholder={promptState.placeholder}
+      />
     </div>
   );
 };
