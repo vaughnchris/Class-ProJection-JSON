@@ -5,6 +5,7 @@
     "rules": "firestore.rules"
   },
   "hosting": {
+    "site": "class-projection-json",
     "public": "dist",
     "ignore": [
       "firebase.json",
